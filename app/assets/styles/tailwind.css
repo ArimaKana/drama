@@ -1,0 +1,20 @@
+@import 'tailwindcss';
+
+@plugin 'tailwindcss/plugin';
+
+@layer base {
+  :root {
+    --color-primary: #3b82f6;
+    --color-primary-dark: #2563eb;
+  }
+}
+
+@layer utilities {
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
