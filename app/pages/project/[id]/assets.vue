@@ -167,28 +167,53 @@
     </div>
 
     <!-- 添加视频对话框 -->
-    <CommonUiDialog v-model="showVideoDialog" :title="isEditingVideo ? '编辑视频' : '添加视频'" width="450px">
+    <CommonUiDialog v-model="showVideoDialog" :title="isEditingVideo ? '编辑视频' : '添加视频'" width="480px">
       <div class="space-y-5">
+        <div class="flex gap-2 bg-gray-100/80 rounded-lg p-1">
+          <button
+            class="flex-1 px-3 py-1.5 text-sm rounded-md transition"
+            :class="videoDialogTab === 'manual' ? 'bg-white text-blue-700 font-medium shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+            @click="videoDialogTab = 'manual'"
+          >手动上传</button>
+          <button
+            class="flex-1 px-3 py-1.5 text-sm rounded-md transition"
+            :class="videoDialogTab === 'ai' ? 'bg-white text-blue-700 font-medium shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+            @click="videoDialogTab = 'ai'"
+          >AI 生成</button>
+        </div>
+
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1.5">视频名称</label>
           <input v-model="videoForm.name" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm" placeholder="请输入视频名称" />
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">视频文件</label>
-          <div class="flex gap-2">
-            <input v-model="videoForm.url" class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 text-gray-500" placeholder="请选择视频文件" readonly />
-            <button type="button" class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50" @click="selectVideoFile">选择</button>
+
+        <!-- 手动上传面板 -->
+        <template v-if="videoDialogTab === 'manual'">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">视频文件</label>
+            <div class="flex gap-2">
+              <input v-model="videoForm.url" class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 text-gray-500" placeholder="请选择视频文件" readonly />
+              <button type="button" class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50" @click="selectVideoFile">选择</button>
+            </div>
           </div>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">AI 生视频</label>
-          <textarea
-            v-model="videoAiPrompt"
-            rows="3"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="输入提示词，例如：电影感镜头，雨夜街道，人物缓慢回头"
-          />
-          <div class="mt-2 space-y-2">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">时长(秒)</label>
+            <input v-model.number="videoForm.duration" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+          </div>
+        </template>
+
+        <!-- AI 生成面板 -->
+        <template v-else>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">AI 生视频提示词</label>
+            <textarea
+              v-model="videoAiPrompt"
+              rows="3"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="输入提示词，例如：电影感镜头，雨夜街道，人物缓慢回头"
+            />
+          </div>
+          <div class="space-y-2">
             <label class="inline-flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
               <input v-model="useFirstFrameImageByAi" type="checkbox" class="accent-blue-500" />
               使用首帧图片生成（图生视频）
@@ -214,7 +239,10 @@
               <option v-for="img in availableFirstFrameImages" :key="`last-${img.id}`" :value="img.id">{{ img.name }}</option>
             </select>
           </div>
-          <div class="mt-2 flex justify-end">
+          <div class="rounded-lg border border-blue-100 bg-blue-50/60 p-3 text-xs text-blue-700 leading-5">
+            生成完成后会自动回填视频地址并切到「手动上传」面板，确认名称后点击「确定」保存。
+          </div>
+          <div class="flex justify-end">
             <button
               type="button"
               class="px-3 py-2 text-sm border border-blue-200 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition disabled:opacity-60"
@@ -224,11 +252,7 @@
               {{ isGeneratingVideoByAi ? '生成中...' : 'AI 生视频并回填' }}
             </button>
           </div>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">时长(秒)</label>
-          <input v-model.number="videoForm.duration" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-        </div>
+        </template>
       </div>
       <template #footer>
         <button class="px-4 py-1.5 text-sm border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 transition" @click="showVideoDialog = false">取消</button>
@@ -237,28 +261,49 @@
     </CommonUiDialog>
 
     <!-- 添加图片对话框 -->
-    <CommonUiDialog v-model="showImageDialog" :title="isEditingImage ? '编辑图片' : '添加图片'" width="450px">
+    <CommonUiDialog v-model="showImageDialog" :title="isEditingImage ? '编辑图片' : '添加图片'" width="480px">
       <div class="space-y-4">
+        <div class="flex gap-2 bg-gray-100/80 rounded-lg p-1">
+          <button
+            class="flex-1 px-3 py-1.5 text-sm rounded-md transition"
+            :class="imageDialogTab === 'manual' ? 'bg-white text-blue-700 font-medium shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+            @click="imageDialogTab = 'manual'"
+          >手动上传</button>
+          <button
+            class="flex-1 px-3 py-1.5 text-sm rounded-md transition"
+            :class="imageDialogTab === 'ai' ? 'bg-white text-blue-700 font-medium shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+            @click="imageDialogTab = 'ai'"
+          >AI 生成</button>
+        </div>
+
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">图片名称</label>
           <input v-model="imageForm.name" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="请输入图片名称" />
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">图片文件</label>
-          <div class="flex gap-2">
-            <input v-model="imageForm.url" class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 text-gray-500" placeholder="请选择图片文件" readonly />
-            <button type="button" class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50" @click="selectImageFile">选择</button>
+
+        <!-- 手动上传面板 -->
+        <template v-if="imageDialogTab === 'manual'">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">图片文件</label>
+            <div class="flex gap-2">
+              <input v-model="imageForm.url" class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 text-gray-500" placeholder="请选择图片文件" readonly />
+              <button type="button" class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50" @click="selectImageFile">选择</button>
+            </div>
           </div>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">AI 生图</label>
-          <textarea
-            v-model="imageAiPrompt"
-            rows="3"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="输入提示词，例如：赛博朋克城市夜景，霓虹灯，电影感构图"
-          />
-          <div class="mt-2 flex items-center justify-between gap-3">
+        </template>
+
+        <!-- AI 生成面板 -->
+        <template v-else>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">AI 生图提示词</label>
+            <textarea
+              v-model="imageAiPrompt"
+              rows="3"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="输入提示词，例如：赛博朋克城市夜景，霓虹灯，电影感构图"
+            />
+          </div>
+          <div class="flex items-center justify-between gap-3">
             <label class="inline-flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
               <input v-model="useReferenceImageByAi" type="checkbox" class="accent-blue-500" />
               使用当前图片作为参考图生图
@@ -272,7 +317,11 @@
               {{ isGeneratingImageByAi ? '生成中...' : 'AI 生图并回填' }}
             </button>
           </div>
-        </div>
+          <div class="rounded-lg border border-blue-100 bg-blue-50/60 p-3 text-xs text-blue-700 leading-5">
+            生成完成后会自动回填图片地址并切到「手动上传」面板，确认名称后点击「确定」保存。
+          </div>
+        </template>
+
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">图片类型</label>
           <div class="flex gap-4">
@@ -404,6 +453,8 @@ const showSubtitleDialog = ref(false)
 const showDeleteDialog = ref(false)
 const showImagePreviewDialog = ref(false)
 const showVideoPreviewDialog = ref(false)
+const videoDialogTab = ref<'manual' | 'ai'>('manual')
+const imageDialogTab = ref<'manual' | 'ai'>('manual')
 const isEditingVideo = ref(false)
 const isEditingImage = ref(false)
 const isEditingAudio = ref(false)
@@ -441,7 +492,7 @@ function resolveSeedreamApiKey() {
   if (currentTextProvider && currentTextProvider !== 'ollama') {
     providers.push(currentTextProvider)
   }
-  providers.push('custom', 'zhipu', 'kimi')
+  providers.push('custom', 'zhipu', 'deepseek', 'kimi')
 
   const tried = new Set<ProjectAiTokenProvider>()
   for (const provider of providers) {
@@ -461,7 +512,7 @@ function resolveSeedanceApiKey() {
   if (currentTextProvider && currentTextProvider !== 'ollama') {
     providers.push(currentTextProvider)
   }
-  providers.push('custom', 'zhipu', 'kimi')
+  providers.push('custom', 'zhipu', 'deepseek', 'kimi')
 
   const tried = new Set<ProjectAiTokenProvider>()
   for (const provider of providers) {
@@ -613,6 +664,7 @@ async function generateVideoByAi() {
     if (!videoForm.duration || videoForm.duration <= 0) {
       videoForm.duration = duration
     }
+    videoDialogTab.value = 'manual'
     toast.success('生视频完成，已回填视频地址')
   } catch (error: any) {
     toast.error(error?.message || 'AI 生视频失败')
@@ -822,6 +874,7 @@ async function generateImageByAi() {
     if (!imageForm.name.trim()) {
       imageForm.name = createUniqueImageName(`AI_${prompt.slice(0, 16)}`)
     }
+    imageDialogTab.value = 'manual'
     toast.success('生图完成，已回填图片')
   } catch (error: any) {
     toast.error(error?.message || 'AI 生图失败')
@@ -1010,6 +1063,7 @@ function editVideo(video: VideoAsset) {
   videoForm.name = video.name
   videoForm.url = video.url
   videoForm.duration = video.duration || 0
+  videoDialogTab.value = 'manual'
   showVideoDialog.value = true
 }
 
@@ -1048,6 +1102,7 @@ function editImage(img: ImageAsset) {
   imageForm.name = img.name
   imageForm.url = img.url
   imageForm.category = img.category
+  imageDialogTab.value = 'manual'
   showImageDialog.value = true
 }
 
@@ -1224,6 +1279,7 @@ function resetVideoForm() {
   selectedFirstFrameImageId.value = ''
   useLastFrameImageByAi.value = false
   selectedLastFrameImageId.value = ''
+  videoDialogTab.value = 'manual'
 }
 
 function resetImageForm() {
@@ -1234,6 +1290,7 @@ function resetImageForm() {
   imageForm.category = 'character'
   imageAiPrompt.value = ''
   useReferenceImageByAi.value = false
+  imageDialogTab.value = 'manual'
 }
 
 function resetAudioForm() {

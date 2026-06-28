@@ -274,7 +274,7 @@ export interface StartPage {
   buttonStyles: StartPageButtonStyles
 }
 
-export type ProjectLlmProvider = 'zhipu' | 'kimi' | 'ollama' | 'custom'
+export type ProjectLlmProvider = 'zhipu' | 'deepseek' | 'kimi' | 'ollama' | 'custom'
 export type ProjectImageProvider = 'seedream'
 export type ProjectVideoProvider = 'seedance'
 export type ProjectAiTokenProvider = ProjectLlmProvider | ProjectImageProvider | ProjectVideoProvider

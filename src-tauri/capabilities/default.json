@@ -21,6 +21,9 @@
           "url": "https://api.openai.com/*"
         },
         {
+          "url": "https://api.deepseek.com/*"
+        },
+        {
           "url": "https://ark.cn-beijing.volces.com/*"
         },
         {

@@ -244,3 +244,68 @@ pub fn save_base64_asset(project_path: String, base64_data: String, filename: St
 
     Ok(filename)
 }
+
+fn guess_mime(filename: &str) -> &'static str {
+    let lower = filename.to_lowercase();
+    if lower.ends_with(".mp4") {
+        "video/mp4"
+    } else if lower.ends_with(".webm") {
+        "video/webm"
+    } else if lower.ends_with(".mov") {
+        "video/quicktime"
+    } else if lower.ends_with(".png") {
+        "image/png"
+    } else if lower.ends_with(".jpg") || lower.ends_with(".jpeg") {
+        "image/jpeg"
+    } else if lower.ends_with(".gif") {
+        "image/gif"
+    } else if lower.ends_with(".webp") {
+        "image/webp"
+    } else if lower.ends_with(".svg") {
+        "image/svg+xml"
+    } else if lower.ends_with(".bmp") {
+        "image/bmp"
+    } else if lower.ends_with(".mp3") {
+        "audio/mpeg"
+    } else if lower.ends_with(".wav") {
+        "audio/wav"
+    } else if lower.ends_with(".ogg") {
+        "audio/ogg"
+    } else if lower.ends_with(".srt") || lower.ends_with(".txt") {
+        "text/plain"
+    } else if lower.ends_with(".json") {
+        "application/json"
+    } else {
+        "application/octet-stream"
+    }
+}
+
+/// 读取项目 assets 目录下的资源文件，返回可内联的 data URI。
+#[tauri::command]
+pub fn read_asset_as_base64(project_path: String, filename: String) -> Result<String, String> {
+    if filename.contains("..") {
+        return Err("文件名不合法".to_string());
+    }
+    let trimmed = filename.trim_start_matches(['/', '\\']);
+    let file_path = PathBuf::from(&project_path).join("assets").join(trimmed);
+    if !file_path.exists() {
+        return Err(format!("资源文件不存在: {}", filename));
+    }
+    let bytes = fs::read(&file_path).map_err(|e| e.to_string())?;
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
+    let mime = guess_mime(&file_path.to_string_lossy());
+    Ok(format!("data:{};base64,{}", mime, b64))
+}
+
+/// 将导出的 HTML 字符串写入用户选择的路径。
+#[tauri::command]
+pub fn write_export_file(path: String, content: String) -> Result<(), String> {
+    let file_path = PathBuf::from(&path);
+    if let Some(parent) = file_path.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+    }
+    fs::write(file_path, content).map_err(|e| e.to_string())?;
+    Ok(())
+}

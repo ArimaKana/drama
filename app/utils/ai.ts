@@ -3,7 +3,7 @@ import { isTauri } from '@tauri-apps/api/core'
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
 import type { ProjectLlmConfig } from '~/types'
 
-export type SupportedLlmProvider = 'zhipu' | 'kimi' | 'ollama' | 'custom'
+export type SupportedLlmProvider = 'zhipu' | 'deepseek' | 'kimi' | 'ollama' | 'custom'
 
 type LlmMessageRole = 'system' | 'user' | 'assistant'
 
@@ -65,6 +65,7 @@ export type ResolvedProjectLlmRuntime =
 
 const DEFAULT_BASE_URL_BY_PROVIDER: Record<SupportedLlmProvider, string | undefined> = {
   zhipu: 'https://open.bigmodel.cn/api/paas/v4',
+  deepseek: 'https://api.deepseek.com/v1',
   kimi: 'https://api.moonshot.cn/v1',
   ollama: 'http://127.0.0.1:11434/v1',
   custom: undefined,
@@ -72,6 +73,7 @@ const DEFAULT_BASE_URL_BY_PROVIDER: Record<SupportedLlmProvider, string | undefi
 
 const DEFAULT_LLM_MODEL_BY_PROVIDER: Record<SupportedLlmProvider, string> = {
   zhipu: 'glm-5',
+  deepseek: 'deepseek-v4-pro',
   kimi: 'kimi-k2.5',
   ollama: 'qwen3:8b',
   custom: 'gpt-4.1-mini',

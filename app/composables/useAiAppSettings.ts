@@ -6,6 +6,7 @@ type AiTokenMap = Record<ProjectAiTokenProvider, string>
 function createDefaultTokenMap(): AiTokenMap {
   return {
     zhipu: '',
+    deepseek: '',
     kimi: '',
     ollama: '',
     custom: '',

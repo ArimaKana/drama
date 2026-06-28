@@ -45,6 +45,16 @@
           大模型配置
         </button>
         <button
+          class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg shadow-sm transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0"
+          :disabled="isExporting"
+          @click="handleExport"
+          title="将当前项目导出为可玩的 H5 游戏（单文件 HTML）"
+        >
+          <span v-if="isExporting" class="w-4 h-4 border-2 border-blue-300 border-t-blue-700 rounded-full animate-spin"></span>
+          <span v-else class="text-base leading-none">📦</span>
+          {{ isExporting ? '导出中...' : '导出' }}
+        </button>
+        <button
           class="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm shadow-blue-600/20 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0"
           :disabled="store.isSaving"
           @click="handleSave"
@@ -295,7 +305,13 @@
         </div>
 
         <div class="rounded-lg border border-blue-100 bg-blue-50/60 p-3 text-xs text-blue-700 leading-5">
-          解析会自动生成：章节名称、章节梗概、可在流程编辑器继续编辑的基础节点流程，以及主要角色与设定。
+          一键解析会自动生成：完整可玩的故事线（每章多个节点串成的剧情分支）、角色设定与头像、核心数值、成就、图鉴，以及场景/结局/起始页配图。<br />
+          <span class="text-blue-500">提示：剧情播放用的视频需稍后在「素材管理」中用 AI 生成并挂到播片节点。</span>
+        </div>
+
+        <div v-if="assistantBusy && assistantStage" class="rounded-lg border border-amber-100 bg-amber-50/70 p-3 text-xs text-amber-700 leading-5 flex items-center gap-2">
+          <span class="w-4 h-4 border-2 border-amber-300 border-t-amber-600 rounded-full animate-spin shrink-0"></span>
+          <span>{{ assistantStage }}</span>
         </div>
       </div>
       <template #footer>
@@ -305,7 +321,11 @@
           :disabled="assistantBusy"
           @click="generateFromNovel"
         >
-          {{ assistantBusy ? '解析中...' : '一键解析并生成' }}
+          <span v-if="assistantBusy" class="inline-flex items-center gap-2">
+            <span class="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
+            {{ assistantStage || '生成中...' }}
+          </span>
+          <span v-else>一键解析并生成</span>
         </button>
       </template>
     </CommonUiDialog>
@@ -313,22 +333,30 @@
 </template>
 
 <script setup lang="ts">
-import type { ProjectLlmProvider, ProjectImageProvider, ProjectVideoProvider, ProjectOrientation, SubtitleAsset, Chapter, Character, VideoNode, ChoiceNode } from '~/types'
-import { z } from 'zod'
+import type { ProjectLlmProvider, ProjectImageProvider, ProjectVideoProvider, ProjectOrientation, SubtitleAsset } from '~/types'
 import { useProjectStore } from '~/stores/project'
 import { useToast } from '~/composables/useToast'
 import { useAiAppSettings } from '~/composables/useAiAppSettings'
 import { isTauriRuntime } from '~/utils/runtime'
-import { callAiModel, resolveProjectLlmRuntime } from '~/utils/ai'
+import { resolveProjectLlmRuntime } from '~/utils/ai'
 import { createId, now } from '~/utils/factory'
+import { useExportGame } from '~/composables/useExportGame'
+import {
+  parseNovelStory,
+  buildProjectDataFromBlueprint,
+  generateBlueprintImages,
+  applyGeneratedImages,
+} from '~/utils/creativeAssistant'
+import { resolveSeedreamApiKey } from '~/utils/generateAsset'
 
 const router = useRouter()
 const route = useRoute()
 const store = useProjectStore()
 const toast = useToast()
 const { getToken, setToken } = useAiAppSettings()
+const { isExporting, exportGame } = useExportGame()
 
-const textProviders: ProjectLlmProvider[] = ['zhipu', 'kimi', 'ollama', 'custom']
+const textProviders: ProjectLlmProvider[] = ['zhipu', 'deepseek', 'kimi', 'ollama', 'custom']
 const imageProviders: ProjectImageProvider[] = ['seedream']
 const videoProviders: ProjectVideoProvider[] = ['seedance']
 const showProjectSettingsDialog = ref(false)
@@ -343,6 +371,7 @@ const showCreativeAssistantDialog = ref(false)
 const selectedNovelAssetId = ref('')
 const assistantExtraPrompt = ref('')
 const assistantBusy = ref(false)
+const assistantStage = ref('')
 const projectConfig = reactive({
   text: {
     provider: 'zhipu' as ProjectLlmProvider,
@@ -363,23 +392,6 @@ const projectConfig = reactive({
 const showTextBaseUrlInput = computed(() => projectConfig.text.provider === 'custom' || projectConfig.text.provider === 'ollama')
 const novelAssets = computed(() => {
   return (store.currentProject?.assets.subtitles || []).filter(asset => isTxtNovelAsset(asset))
-})
-
-const aiGeneratedChapterSchema = z.object({
-  name: z.string().optional(),
-  summary: z.string().optional(),
-  flow: z.array(z.string()).optional(),
-})
-
-const aiGeneratedCharacterSchema = z.object({
-  name: z.string().optional(),
-  gender: z.enum(['male', 'female', 'other']).optional(),
-  description: z.string().optional(),
-})
-
-const aiGeneratedPayloadSchema = z.object({
-  chapters: z.array(aiGeneratedChapterSchema).optional().default([]),
-  characters: z.array(aiGeneratedCharacterSchema).optional().default([]),
 })
 
 const menuItems = [
@@ -426,6 +438,7 @@ function handleBack() {
 
 function llmProviderLabel(provider: ProjectLlmProvider) {
   if (provider === 'zhipu') return '智谱'
+  if (provider === 'deepseek') return 'DeepSeek'
   if (provider === 'kimi') return 'Kimi'
   if (provider === 'ollama') return 'Ollama'
   if (provider === 'custom') return '自定义'
@@ -539,72 +552,6 @@ async function uploadNovelTxtToAssets() {
   }
 }
 
-function extractJsonFromModelText(text: string) {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)
-  const candidate = fenced?.[1] || text
-  const firstBrace = candidate.indexOf('{')
-  const lastBrace = candidate.lastIndexOf('}')
-  if (firstBrace < 0 || lastBrace <= firstBrace) {
-    throw new Error('模型返回内容不是合法 JSON')
-  }
-  const parsedJson = JSON.parse(candidate.slice(firstBrace, lastBrace + 1))
-  const parsedResult = aiGeneratedPayloadSchema.safeParse(parsedJson)
-  if (!parsedResult.success) {
-    throw new Error('模型返回 JSON 格式不符合预期，请重试')
-  }
-  return parsedResult.data
-}
-
-function buildChapterFlowNodes(chapterName: string, flowSteps: string[]) {
-  const timestamp = now()
-  const videoNodeId = createId()
-  const choiceNodeId = createId()
-
-  const videoNode: VideoNode = {
-    id: videoNodeId,
-    type: 'video',
-    name: `${chapterName}-剧情`,
-    x: 220,
-    y: 180,
-    videoId: '',
-    subtitleEnabled: false,
-    subtitleId: null,
-    nextNodeId: choiceNodeId,
-    valueChanges: [],
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  }
-
-  const safeFlowSteps = flowSteps.length > 0
-    ? flowSteps
-    : ['开场推进', '冲突展开', '阶段收束']
-
-  const choiceNode: ChoiceNode = {
-    id: choiceNodeId,
-    type: 'choice',
-    name: `${chapterName}-流程`,
-    x: 520,
-    y: 180,
-    prompt: '章节流程（可继续编辑）',
-    hasCountdown: false,
-    countdownSeconds: 10,
-    defaultOptionId: null,
-    options: safeFlowSteps.slice(0, 6).map(step => ({
-      id: createId(),
-      text: step,
-      nextNodeId: null,
-      valueChanges: [],
-    })),
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  }
-
-  return {
-    nodes: [videoNode, choiceNode],
-    startNodeId: videoNodeId,
-  }
-}
-
 async function generateFromNovel() {
   if (assistantBusy.value) return
   if (!store.currentProject) return
@@ -627,6 +574,7 @@ async function generateFromNovel() {
   }
 
   assistantBusy.value = true
+  assistantStage.value = '正在读取小说…'
   try {
     const novelUrl = store.getAssetUrl(selectedNovel.url)
     const response = await fetch(novelUrl)
@@ -639,99 +587,90 @@ async function generateFromNovel() {
       return
     }
 
-    const truncatedNovel = novelContent.slice(0, 30000)
-    const prompt = [
-      '你是互动剧情编辑助手。请根据输入小说提炼结构化创作数据。',
-      '要求：',
-      '1) 返回严格 JSON，不要添加任何解释。',
-      '2) chapters 返回 5-12 章，每章包含 name、summary、flow。',
-      '3) flow 是该章关键流程步骤数组，3-6 条，简洁可编辑。',
-      '4) characters 返回主要角色与设定，字段为 name、gender、description。',
-      '5) gender 仅允许 male/female/other。',
-      '',
-      'JSON Schema:',
-      '{',
-      '  "chapters": [{ "name": "", "summary": "", "flow": [""] }],',
-      '  "characters": [{ "name": "", "gender": "male|female|other", "description": "" }]',
-      '}',
-      '',
-      assistantExtraPrompt.value.trim() ? `补充要求：${assistantExtraPrompt.value.trim()}` : '',
-      '小说内容如下：',
-      truncatedNovel,
-    ].filter(Boolean).join('\n')
-
-    const result = await callAiModel(runtime.clientOptions, {
-      kind: 'llm',
+    // 1) 解析剧情蓝图
+    assistantStage.value = '正在解析剧情并生成完整故事线…'
+    const blueprint = await parseNovelStory({
+      clientOptions: runtime.clientOptions,
       model: runtime.model,
-      prompt,
+      novelContent,
+      extraPrompt: assistantExtraPrompt.value,
     })
 
-    const parsed = extractJsonFromModelText(result.text)
-    const chapterInputs = (parsed.chapters || [])
-      .map(item => ({
-        name: (item.name || '').trim(),
-        summary: (item.summary || '').trim(),
-        flow: (item.flow || []).map(step => step.trim()).filter(Boolean),
-      }))
-      .filter(item => item.name)
-
-    const characterInputs = (parsed.characters || [])
-      .map(item => ({
-        name: (item.name || '').trim(),
-        gender: item.gender === 'male' || item.gender === 'female' || item.gender === 'other' ? item.gender : 'other',
-        description: (item.description || '').trim(),
-      }))
-      .filter(item => item.name)
-
-    if (chapterInputs.length === 0) {
+    if (!blueprint.chapters.length) {
       throw new Error('未解析到有效章节，请调整模型配置后重试')
     }
 
-    if ((store.currentProject.chapters.length > 0 || store.currentProject.characters.length > 0)
-      && !window.confirm('将覆盖当前项目的章节和角色数据，是否继续？')) {
+    // 统计节点数，用于确认提示
+    const totalNodes = blueprint.chapters.reduce((sum, ch) => sum + (ch.nodes?.length || 0), 0)
+
+    const hasExisting = (store.currentProject.chapters.length > 0
+      || store.currentProject.characters.length > 0
+      || store.currentProject.gameValues.length > 0
+      || store.currentProject.achievements.length > 0
+      || store.currentProject.collection.length > 0
+      || store.currentProject.assets.images.length > 0)
+
+    const confirmMsg = [
+      `将生成 ${blueprint.chapters.length} 章、共 ${totalNodes} 个节点、${blueprint.characters.length} 个角色、`,
+      `${blueprint.gameValues.length} 个数值、${blueprint.achievements.length} 个成就、${blueprint.collection.length} 条图鉴。`,
+      '将覆盖当前项目的章节/角色/数值/成就/图鉴/图片素材（保留视频、音频、字幕），是否继续？',
+    ].join('')
+
+    if (hasExisting && !window.confirm(confirmMsg)) {
       return
     }
 
-    const generatedChapters: Chapter[] = chapterInputs.map((item, index) => {
-      const timestamp = now()
-      const flow = buildChapterFlowNodes(item.name, item.flow)
-      return {
-        id: createId(),
-        name: item.name,
-        description: item.summary,
-        backgroundAudioId: null,
-        order: index,
-        nodes: flow.nodes,
-        startNodeId: flow.startNodeId,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      }
-    })
+    // 2) 构建项目数据（章节 DAG / 数值 / 成就 / 图鉴 / 角色）
+    const { data, refs } = buildProjectDataFromBlueprint(blueprint)
 
-    const generatedCharacters: Character[] = characterInputs.map(item => {
-      const timestamp = now()
-      const gender: Character['gender'] = item.gender === 'male' || item.gender === 'female' ? item.gender : 'other'
-      return {
-        id: createId(),
-        name: item.name,
-        gender,
-        avatar: '',
-        description: item.description,
-        images: [],
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      }
-    })
+    // 3) 批量生成图片（角色头像 / 场景 / 结局 / 起始页）
+    const imageApiKey = resolveSeedreamApiKey(getToken, textProvider)
+    let generatedImages: Awaited<ReturnType<typeof generateBlueprintImages>> = []
+    if (imageApiKey && blueprint.images.length > 0) {
+      assistantStage.value = `正在生成图片 0/${blueprint.images.length}…`
+      generatedImages = await generateBlueprintImages(
+        blueprint,
+        {
+          apiKey: imageApiKey,
+          baseURL: store.currentProject.aiConfig?.image?.baseURL || undefined,
+          model: store.currentProject.aiConfig?.image?.model || undefined,
+          projectPath: store.currentProject.path,
+        },
+        (p) => {
+          assistantStage.value = `正在生成图片 ${p.done}/${p.total}：${p.name}`
+        },
+      )
+    } else if (!imageApiKey && blueprint.images.length > 0) {
+      toast.warning('未配置 Seedream API Token，已跳过图片生成（角色头像等可稍后补充）')
+    }
 
-    store.currentProject.chapters = generatedChapters
-    store.currentProject.characters = generatedCharacters
+    // 4) 回填图片到角色头像 / 结局图 / 起始页
+    const { images: finalImages, startPageBackground } = applyGeneratedImages(data, refs, generatedImages)
+
+    // 5) 覆盖写入项目（保留视频/音频/字幕素材）
+    const project = store.currentProject
+    project.chapters = data.chapters
+    project.characters = data.characters
+    project.gameValues = data.gameValues
+    project.achievements = data.achievements
+    project.collection = data.collection
+    project.assets.images = finalImages
+    if (startPageBackground) {
+      project.startPage = { ...project.startPage, backgroundMedia: startPageBackground }
+    }
+
     await store.saveProject()
     showCreativeAssistantDialog.value = false
-    toast.success(`已生成 ${generatedChapters.length} 个章节与 ${generatedCharacters.length} 个角色`)
+    assistantStage.value = ''
+    const imgNote = generatedImages.length > 0 ? `、${generatedImages.length} 张图片` : ''
+    toast.success(
+      `已生成 ${data.chapters.length} 章（${totalNodes} 个节点）、${data.characters.length} 个角色${imgNote}`,
+    )
   } catch (error: any) {
     toast.error(error?.message || '小说解析失败')
   } finally {
     assistantBusy.value = false
+    assistantStage.value = ''
   }
 }
 
@@ -821,6 +760,31 @@ async function saveProjectConfig() {
 async function handleSave() {
   await store.saveProject()
   toast.success('保存成功')
+}
+
+async function handleExport() {
+  if (!store.currentProject) {
+    toast.warning('请先打开项目')
+    return
+  }
+  // 导出前先保存，确保最新数据落盘，资源文件就位
+  try {
+    await store.saveProject()
+  } catch (error: any) {
+    toast.error(error?.message || '保存项目失败，无法导出')
+    return
+  }
+
+  const result = await exportGame(store.currentProject)
+  if (!result.ok) {
+    if (result.error) toast.error(result.error)
+    return
+  }
+  if (result.path) {
+    toast.success('已导出为 H5 游戏：' + result.path)
+  } else {
+    toast.success('已导出为 H5 游戏，浏览器已开始下载')
+  }
 }
 </script>
 
