@@ -45,14 +45,8 @@
             <button class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm transition-all duration-200 whitespace-nowrap active:scale-95" @click="addNode('choice')">
               <span class="text-purple-500">🔀</span> 选择
             </button>
-            <button class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm transition-all duration-200 whitespace-nowrap active:scale-95" @click="addNode('qte')">
-              <span class="text-yellow-500">⚡</span> QTE
-            </button>
             <button class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm transition-all duration-200 whitespace-nowrap active:scale-95" @click="addNode('ending')">
               <span class="text-red-500">🏁</span> 结局
-            </button>
-            <button class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm transition-all duration-200 whitespace-nowrap active:scale-95" @click="addNode('explore')">
-              <span class="text-green-500">🔍</span> 探索
             </button>
             <button class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm transition-all duration-200 whitespace-nowrap active:scale-95" @click="addNode('clear')">
               <span class="text-orange-500">🎉</span> 通关

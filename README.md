@@ -20,16 +20,14 @@
 | --- | --- |
 | `video` 播片节点 | 播放视频片段，可挂载字幕与数值变更 |
 | `choice` 选择节点 | 分支选项，可设置倒计时与超时默认项 |
-| `qte` QTE 节点 | 限时互动，区分成功/失败两条走向 |
 | `condition` 条件分支 | 基于数值条件 (`> < =` 等 + `and/or` 逻辑) 自动分流 |
-| `explore` 探索节点 | 场景热点点击探索，每个热点可触发独立剧情 |
 | `ending` 结局节点 | 定义故事结局画面 |
 | `clear` 通关节点 | 标记通关结算 |
 
 ### 🧩 游戏要素系统
 - **角色系统**：性别、头像、描述、关联图集
 - **数值系统**：自定义游戏数值（好感度、属性等），带默认/上下限
-- **数值变更**：可绑定到播片、选择选项、QTE 成败、热点点击等任意时机
+- **数值变更**：可绑定到播片、选择选项等任意时机
 - **成就系统**：基于数值 / 章节解锁 / 节点播放的多条件解锁
 - **图鉴系统**：角色图鉴条目，按条件解锁
 - **起始页定制**：背景（图/视频）、标题、菜单位置、按钮样式全可调
@@ -158,7 +156,7 @@ pnpm tauri:build
 
 - `Project` — 项目根对象，含素材、章节、角色、数值、起始页、AI 配置、成就、图鉴
 - `Chapter` — 章节，包含一组 `StoryNode`
-- `StoryNode` — 节点联合类型（video / choice / qte / condition / explore / ending / clear）
+- `StoryNode` — 节点联合类型（video / choice / condition / ending / clear）
 - `Character` / `GameValue` / `Achievement` / `CollectionEntry` — 游戏要素实体
 - `AssetLibrary` — 视频/图片/音频/字幕素材集合
 

@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-1 px-8 py-8 overflow-y-auto bg-gray-50/30">
+  <div class="h-full min-h-0 px-8 py-8 overflow-y-auto bg-gray-50/30">
     <div class="flex justify-between items-center mb-8">
       <div>
         <h3 class="text-xl font-bold text-gray-900 tracking-tight">素材管理</h3>
@@ -289,6 +289,9 @@
               <input v-model="imageForm.url" class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 text-gray-500" placeholder="请选择图片文件" readonly />
               <button type="button" class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50" @click="selectImageFile">选择</button>
             </div>
+            <div v-if="imageForm.url" class="mt-3 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
+              <img :src="store.getAssetUrl(imageForm.url)" :alt="imageForm.name || '预览'" class="w-full max-h-64 object-contain bg-white" />
+            </div>
           </div>
         </template>
 
@@ -303,22 +306,37 @@
               placeholder="输入提示词，例如：赛博朋克城市夜景，霓虹灯，电影感构图"
             />
           </div>
-          <div class="flex items-center justify-between gap-3">
-            <label class="inline-flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
-              <input v-model="useReferenceImageByAi" type="checkbox" class="accent-blue-500" />
-              使用当前图片作为参考图生图
-            </label>
+
+          <!-- 参考图（可选） -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-sm font-medium text-gray-700">参考图（可选）</label>
+              <div class="flex gap-1.5">
+                <button type="button" class="px-2.5 py-1 text-xs border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 transition" @click="openReferenceImagePicker">从素材库选</button>
+                <button type="button" class="px-2.5 py-1 text-xs border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 transition" @click="selectReferenceImageFile">本地上传</button>
+              </div>
+            </div>
+            <div v-if="referenceImageUrl" class="relative rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
+              <img :src="referenceImageUrl" alt="参考图" class="w-full max-h-48 object-contain bg-white" />
+              <button type="button" class="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center rounded-full bg-black/50 text-white text-xs hover:bg-black/70 transition" @click="clearReferenceImage">✕</button>
+            </div>
+            <p v-else class="text-xs text-gray-400 leading-5 py-2">不选则纯文生图。可从素材库选择或本地上传一张图作为参考。</p>
+          </div>
+
+          <div class="flex justify-end">
             <button
               type="button"
               class="px-3 py-2 text-sm border border-blue-200 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition disabled:opacity-60"
               :disabled="isGeneratingImageByAi"
               @click="generateImageByAi"
             >
-              {{ isGeneratingImageByAi ? '生成中...' : 'AI 生图并回填' }}
+              {{ isGeneratingImageByAi ? '生成中...' : '生成图片' }}
             </button>
           </div>
-          <div class="rounded-lg border border-blue-100 bg-blue-50/60 p-3 text-xs text-blue-700 leading-5">
-            生成完成后会自动回填图片地址并切到「手动上传」面板，确认名称后点击「确定」保存。
+
+          <!-- 生成结果预览（停留在当前 tab） -->
+          <div v-if="imageForm.url" class="rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
+            <img :src="store.getAssetUrl(imageForm.url)" :alt="imageForm.name || '生成结果'" class="w-full max-h-64 object-contain bg-white" />
           </div>
         </template>
 
@@ -403,6 +421,17 @@
       </div>
     </CommonUiDialog>
 
+    <CommonUiAssetPickerDialog
+      v-model="showReferenceImagePicker"
+      title="选择参考图"
+      asset-type="image"
+      :assets="availableReferenceImages"
+      :selected-id="selectedReferenceImageId"
+      allow-none
+      none-label="不使用参考图"
+      @select="onPickReferenceImage"
+    />
+
     <CommonUiDialog v-model="showVideoPreviewDialog" :title="previewVideoName || '视频预览'" width="900px">
       <div class="w-full h-[60vh] bg-black rounded-lg border border-gray-200 overflow-hidden flex items-center justify-center">
         <video
@@ -483,7 +512,9 @@ const useLastFrameImageByAi = ref(false)
 const selectedLastFrameImageId = ref('')
 const imageAiPrompt = ref('')
 const isGeneratingImageByAi = ref(false)
-const useReferenceImageByAi = ref(false)
+const showReferenceImagePicker = ref(false)
+const selectedReferenceImageId = ref<string | null>(null)
+const referenceImageUrl = ref('')
 
 function resolveSeedreamApiKey() {
   const providers: ProjectAiTokenProvider[] = []
@@ -808,20 +839,14 @@ async function generateImageByAi() {
   isGeneratingImageByAi.value = true
   try {
     let referenceImage: string | undefined
-    if (useReferenceImageByAi.value) {
-      const rawImage = imageForm.url.trim()
-      if (!rawImage) {
-        toast.warning('请先选择图片或先生成一张图片，再启用参考图生图')
-        return
+    if (referenceImageUrl.value.trim()) {
+      try {
+        // 本地素材文件会被解析为 data URL，网络图片保持原样
+        referenceImage = await toModelAccessibleImageUrl(referenceImageUrl.value.trim())
+      } catch (e: any) {
+        toast.warning(e?.message || '参考图无法被模型访问，已改为纯文生图')
+        referenceImage = undefined
       }
-
-      const resolvedImage = store.getAssetUrl(rawImage)
-      if (!resolvedImage.startsWith('http') && !resolvedImage.startsWith('data:')) {
-        toast.warning('当前参考图不可被模型访问，请使用网络链接或已生成的图片')
-        return
-      }
-
-      referenceImage = resolvedImage
     }
 
     const result = await generateSeedreamImage(
@@ -874,8 +899,7 @@ async function generateImageByAi() {
     if (!imageForm.name.trim()) {
       imageForm.name = createUniqueImageName(`AI_${prompt.slice(0, 16)}`)
     }
-    imageDialogTab.value = 'manual'
-    toast.success('生图完成，已回填图片')
+    toast.success('图片生成完成')
   } catch (error: any) {
     toast.error(error?.message || 'AI 生图失败')
   } finally {
@@ -945,6 +969,60 @@ async function selectImageFile() {
       }
     } catch (e: any) {
       toast.error(e?.message || '文件选择失败，请检查 Tauri 插件配置')
+    }
+  } else {
+    toast.error('浏览器环境不支持选择本地文件')
+  }
+}
+
+// ===== AI 生图：参考图选择 =====
+function openReferenceImagePicker() {
+  if (!availableReferenceImages.value.length) {
+    toast.warning('素材库中暂无图片，可先用本地上传选择参考图')
+    return
+  }
+  showReferenceImagePicker.value = true
+}
+
+function onPickReferenceImage(id: string | null) {
+  if (!id) {
+    clearReferenceImage()
+    showReferenceImagePicker.value = false
+    return
+  }
+  const img = availableReferenceImages.value.find(item => item.id === id)
+  if (img) {
+    selectedReferenceImageId.value = id
+    referenceImageUrl.value = img.url
+  }
+  showReferenceImagePicker.value = false
+}
+
+function clearReferenceImage() {
+  selectedReferenceImageId.value = null
+  referenceImageUrl.value = ''
+}
+
+async function selectReferenceImageFile() {
+  if (isTauriRuntime()) {
+    try {
+      const { open } = await import('@tauri-apps/plugin-dialog')
+      const selected = await open({
+        multiple: false,
+        filters: [{ name: 'Image', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] }]
+      })
+      if (selected) {
+        const sourcePath = selected as string
+        const bytes = await readFile(sourcePath)
+        const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+        const base64 = arrayBufferToBase64(buffer)
+        const mimeType = inferImageMimeTypeFromAssetUrl(sourcePath)
+        const dataUrl = `data:${mimeType};base64,${base64}`
+        selectedReferenceImageId.value = null
+        referenceImageUrl.value = dataUrl
+      }
+    } catch (e: any) {
+      toast.error(e?.message || '参考图读取失败')
     }
   } else {
     toast.error('浏览器环境不支持选择本地文件')
@@ -1034,6 +1112,11 @@ const filteredImages = computed(() => {
 
 const availableFirstFrameImages = computed(() => {
   return store.currentProject?.assets.images || []
+})
+
+// AI 生图参考图候选：素材库中的所有图片（本地文件会在生图时转为 data URL 供模型访问）
+const availableReferenceImages = computed(() => {
+  return (store.currentProject?.assets.images || []).filter(img => !!img.url)
 })
 
 function categoryLabel(cat: ImageCategory) {
@@ -1289,7 +1372,9 @@ function resetImageForm() {
   imageForm.url = ''
   imageForm.category = 'character'
   imageAiPrompt.value = ''
-  useReferenceImageByAi.value = false
+  showReferenceImagePicker.value = false
+  selectedReferenceImageId.value = null
+  referenceImageUrl.value = ''
   imageDialogTab.value = 'manual'
 }
 

@@ -39,14 +39,8 @@
       <template #node-choice="nodeProps">
         <EditorFlowNodeCard :node="nodeProps" color="#e67e22" icon="🔀" label="选择" />
       </template>
-      <template #node-qte="nodeProps">
-        <EditorFlowNodeCard :node="nodeProps" color="#e74c3c" icon="⚡" label="QTE" />
-      </template>
       <template #node-ending="nodeProps">
         <EditorFlowNodeCard :node="nodeProps" color="#9b59b6" icon="🏁" label="结局" />
-      </template>
-      <template #node-explore="nodeProps">
-        <EditorFlowNodeCard :node="nodeProps" color="#1abc9c" icon="🔍" label="探索" />
       </template>
       <template #node-clear="nodeProps">
         <EditorFlowNodeCard :node="nodeProps" color="#2ecc71" icon="🎉" label="通关" />
@@ -71,7 +65,7 @@ import { VueFlow, useVueFlow, type Node, type Edge, type Connection } from '@vue
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
-import type { StoryNode, ChoiceNode, QTENode, ConditionNode, VideoNode, ExploreNode } from '~/types'
+import type { StoryNode, ChoiceNode, ConditionNode, VideoNode } from '~/types'
 import { useProjectStore } from '~/stores/project'
 
 // 导入 Vue Flow 样式
@@ -139,30 +133,6 @@ watch(
           })
           break
         }
-        case 'qte': {
-          const qn = node as QTENode
-          if (qn.successNodeId) {
-            edges.push({
-              id: `${qn.id}-success-${qn.successNodeId}`,
-              source: qn.id,
-              target: qn.successNodeId,
-              sourceHandle: 'success',
-              label: '成功',
-              style: { stroke: '#2ecc71' },
-            })
-          }
-          if (qn.failNodeId) {
-            edges.push({
-              id: `${qn.id}-fail-${qn.failNodeId}`,
-              source: qn.id,
-              target: qn.failNodeId,
-              sourceHandle: 'fail',
-              label: '失败',
-              style: { stroke: '#e74c3c' },
-            })
-          }
-          break
-        }
         case 'condition': {
           const cond = node as ConditionNode
           if (cond.trueNodeId) {
@@ -183,20 +153,6 @@ watch(
               sourceHandle: 'false',
               label: '不满足',
               style: { stroke: '#e74c3c' },
-            })
-          }
-          break
-        }
-        case 'explore': {
-          const en = node as ExploreNode
-          if (en.nextNodeId) {
-            edges.push({
-              id: `${en.id}-next-${en.nextNodeId}`,
-              source: en.id,
-              target: en.nextNodeId,
-              sourceHandle: 'next',
-              label: '下一步',
-              animated: true,
             })
           }
           break
@@ -246,16 +202,9 @@ function onConnect(connection: Connection) {
       store.updateNode(sourceNode.id, { options: cn.options } as any)
       break
     }
-    case 'qte':
-      if (handle === 'success') store.updateNode(sourceNode.id, { successNodeId: connection.target } as any)
-      else store.updateNode(sourceNode.id, { failNodeId: connection.target } as any)
-      break
     case 'condition':
       if (handle === 'true') store.updateNode(sourceNode.id, { trueNodeId: connection.target } as any)
       else store.updateNode(sourceNode.id, { falseNodeId: connection.target } as any)
-      break
-    case 'explore':
-      store.updateNode(sourceNode.id, { nextNodeId: connection.target } as any)
       break
   }
 }
@@ -273,9 +222,7 @@ function miniMapNodeColor(node: Node) {
   const colors: Record<string, string> = {
     video: '#3498db',
     choice: '#e67e22',
-    qte: '#e74c3c',
     ending: '#9b59b6',
-    explore: '#1abc9c',
     clear: '#2ecc71',
     condition: '#f39c12',
   }

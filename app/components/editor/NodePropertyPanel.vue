@@ -97,32 +97,6 @@
         </div>
       </template>
 
-      <!-- QTE 节点 -->
-      <template v-if="nodeData.type === 'qte'">
-        <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1.5">描述</label>
-          <textarea v-model="nodeData.description" rows="3" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none transition-all shadow-sm" @change="updateField('description', nodeData.description)"></textarea>
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1.5">时间限制(秒)</label>
-          <input v-model.number="nodeData.timeLimit" type="number" min="1" max="60" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm" @change="updateField('timeLimit', nodeData.timeLimit)" />
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1.5">成功 → 节点</label>
-          <select v-model="nodeData.successNodeId" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white transition-all shadow-sm" @change="updateField('successNodeId', nodeData.successNodeId)">
-            <option value="">选择节点</option>
-            <option v-for="n in otherNodes" :key="n.id" :value="n.id">{{ n.name }}</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs text-gray-500 mb-1">失败 → 节点</label>
-          <select v-model="nodeData.failNodeId" class="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" @change="updateField('failNodeId', nodeData.failNodeId)">
-            <option value="">选择节点</option>
-            <option v-for="n in otherNodes" :key="n.id" :value="n.id">{{ n.name }}</option>
-          </select>
-        </div>
-      </template>
-
       <!-- 结局节点 -->
       <template v-if="nodeData.type === 'ending'">
         <div>
@@ -132,17 +106,6 @@
         <div>
           <label class="block text-xs text-gray-500 mb-1">结局描述</label>
           <textarea v-model="nodeData.description" rows="3" class="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none" @change="updateField('description', nodeData.description)"></textarea>
-        </div>
-      </template>
-
-      <!-- 探索节点 -->
-      <template v-if="nodeData.type === 'explore'">
-        <div>
-          <label class="block text-xs text-gray-500 mb-1">下一节点</label>
-          <select v-model="nodeData.nextNodeId" class="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" @change="updateField('nextNodeId', nodeData.nextNodeId)">
-            <option value="">选择节点</option>
-            <option v-for="n in otherNodes" :key="n.id" :value="n.id">{{ n.name }}</option>
-          </select>
         </div>
       </template>
 

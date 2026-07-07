@@ -11,9 +11,7 @@ import type {
   StoryNode,
   VideoNode,
   ChoiceNode,
-  QTENode,
   EndingNode,
-  ExploreNode,
   ClearNode,
   ConditionNode,
 } from '~/types'
@@ -171,25 +169,6 @@ export function createChoiceNode(x: number, y: number): ChoiceNode {
   }
 }
 
-export function createQTENode(x: number, y: number): QTENode {
-  const timestamp = now()
-  return {
-    id: createId(),
-    type: 'qte',
-    name: 'QTE 节点',
-    x,
-    y,
-    description: '',
-    timeLimit: 5,
-    successNodeId: null,
-    failNodeId: null,
-    valueChangesOnSuccess: [],
-    valueChangesOnFail: [],
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  }
-}
-
 export function createEndingNode(x: number, y: number): EndingNode {
   const timestamp = now()
   return {
@@ -201,22 +180,6 @@ export function createEndingNode(x: number, y: number): EndingNode {
     title: '结局',
     description: '',
     endingImage: '',
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  }
-}
-
-export function createExploreNode(x: number, y: number): ExploreNode {
-  const timestamp = now()
-  return {
-    id: createId(),
-    type: 'explore',
-    name: '探索节点',
-    x,
-    y,
-    backgroundImage: '',
-    hotspots: [],
-    nextNodeId: null,
     createdAt: timestamp,
     updatedAt: timestamp,
   }
@@ -282,9 +245,7 @@ export function createNodeByType(type: string, x: number, y: number): StoryNode 
   switch (type) {
     case 'video': return createVideoNode(x, y)
     case 'choice': return createChoiceNode(x, y)
-    case 'qte': return createQTENode(x, y)
     case 'ending': return createEndingNode(x, y)
-    case 'explore': return createExploreNode(x, y)
     case 'clear': return createClearNode(x, y)
     case 'condition': return createConditionNode(x, y)
     default: return createVideoNode(x, y)

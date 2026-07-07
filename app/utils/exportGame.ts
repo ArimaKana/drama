@@ -76,13 +76,6 @@ function collectReferencedAssets(project: Project): CollectedAssets {
         case 'ending':
           addUrlRef(urlRefs, node.endingImage)
           break
-        case 'explore':
-          addUrlRef(urlRefs, node.backgroundImage)
-          for (const hs of node.hotspots) {
-            // hotspot 没有 image 字段，仅坐标与跳转
-            void hs
-          }
-          break
         default:
           break
       }
@@ -254,31 +247,11 @@ function normalizeNode(node: any, resolve: (ref: unknown) => string): any {
           id: o.id, text: o.text, nextNodeId: o.nextNodeId, valueChanges: o.valueChanges || [],
         })),
       }
-    case 'qte':
-      return {
-        id: node.id, type: node.type, name: node.name,
-        description: node.description,
-        timeLimit: node.timeLimit,
-        successNodeId: node.successNodeId,
-        failNodeId: node.failNodeId,
-        valueChangesOnSuccess: node.valueChangesOnSuccess || [],
-        valueChangesOnFail: node.valueChangesOnFail || [],
-      }
     case 'ending':
       return {
         id: node.id, type: node.type, name: node.name,
         title: node.title, description: node.description,
         endingImage: resolve(node.endingImage),
-      }
-    case 'explore':
-      return {
-        id: node.id, type: node.type, name: node.name,
-        backgroundImage: resolve(node.backgroundImage),
-        hotspots: (node.hotspots || []).map((h: any) => ({
-          id: h.id, x: h.x, y: h.y, width: h.width, height: h.height,
-          label: h.label, nextNodeId: h.nextNodeId, valueChanges: h.valueChanges || [],
-        })),
-        nextNodeId: node.nextNodeId,
       }
     case 'clear':
       return {
@@ -382,15 +355,33 @@ html, body { width: 100%; height: 100%; background: #000; overflow: hidden; font
 .card p { font-size: 12px; opacity: 0.7; line-height: 1.5; }
 .topbar { position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; z-index: 20; }
 .topbar .btn { background: rgba(0,0,0,0.45); color: #fff; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; }
-.qte-bar { width: min(560px, 86%); height: 14px; background: rgba(255,255,255,0.15); border-radius: 999px; overflow: hidden; }
-.qte-bar > div { height: 100%; background: linear-gradient(90deg, #22c55e, #eab308); }
-.qte-action { padding: 22px 40px; border-radius: 16px; font-size: 22px; font-weight: 800; background: #2563eb; color: #fff; box-shadow: 0 8px 30px rgba(37,99,235,0.5); }
-.qte-action.fail { background: #6b7280; box-shadow: none; }
-.hotspot { position: absolute; border: 2px dashed rgba(255,255,255,0.6); background: rgba(255,255,255,0.12); color: #fff; font-size: 12px; display: flex; align-items: center; justify-content: center; border-radius: 8px; cursor: pointer; transition: background .15s; }
-.hotspot:hover { background: rgba(255,255,255,0.28); }
 .hidden { display: none !important; }
 .video-el { width: 100%; height: 100%; object-fit: contain; background: #000; }
 .toast { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.75); color: #fff; padding: 10px 18px; border-radius: 999px; font-size: 14px; z-index: 50; }
+/* 时间线面板：叠加层，盖在 topbar 之上，不清空舞台 */
+.timeline-overlay { z-index: 30; }
+.timeline-overlay h2 { display: flex; align-items: center; gap: 8px; }
+.timeline-hint { margin-top: -8px; }
+/* 章节容器：居中列布局，章节作为外框分组 */
+.timeline-chapter { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 18px 16px 20px; margin-bottom: 18px; }
+/* 章节标题 */
+.timeline-chapter-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.timeline-chapter-anchor { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: #fff; box-shadow: 0 0 0 4px rgba(99,102,241,0.18); }
+.timeline-chapter-name { font-size: 17px; font-weight: 800; letter-spacing: 0.5px; line-height: 1.3; }
+.timeline-chapter-desc { font-size: 12px; opacity: 0.6; margin-top: 2px; font-weight: 400; }
+/* 流程节点：每张卡片居中显示 */
+.timeline-event { display: flex; justify-content: center; }
+.timeline-event-card { width: 100%; max-width: 420px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-left: 4px solid #6366f1; border-radius: 12px; padding: 12px 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.18); }
+.timeline-event.end .timeline-event-card { border-left-color: #ef4444; background: rgba(239,68,68,0.1); box-shadow: 0 0 16px rgba(239,68,68,0.2); }
+.timeline-event-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.timeline-event-main { flex: 1; min-width: 0; }
+.timeline-event-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: rgba(99,102,241,0.2); color: #c7d2fe; margin-bottom: 6px; }
+.timeline-event.end .timeline-event-tag { background: rgba(239,68,68,0.22); color: #fecaca; }
+.timeline-event-title { font-size: 14px; font-weight: 600; line-height: 1.4; word-break: break-word; }
+.timeline-event-detail { font-size: 12px; opacity: 0.78; margin-top: 4px; line-height: 1.45; word-break: break-word; }
+.timeline-event-ts { flex-shrink: 0; font-size: 11px; opacity: 0.6; font-variant-numeric: tabular-nums; padding-top: 2px; white-space: nowrap; }
+/* 节点之间的箭头连线 ▼ */
+.timeline-arrow { display: flex; justify-content: center; color: rgba(99,102,241,0.6); font-size: 16px; line-height: 1; margin: 6px 0; }
 </style>
 </head>
 <body>
@@ -420,7 +411,7 @@ const RUNTIME_JS = [
   '      // 允许无角色绑定的全局数值',
   '      values["|"+v.id] = v.defaultValue;',
   '    });',
-  '    return { values: values, visitedChapters: {}, playedNodes: {}, unlockedAchievements: {}, unlockedCollection: {}, currentChapterId: null, currentNodeId: null };',
+  '    return { values: values, visitedChapters: {}, playedNodes: {}, unlockedAchievements: {}, unlockedCollection: {}, currentChapterId: null, currentNodeId: null, timeline: [] };',
   '  }',
   '',
   '  // ===== 资源解析 =====',
@@ -496,13 +487,33 @@ const RUNTIME_JS = [
   '    else if(c.type==="node_played") ok=!!state.playedNodes[c.nodeId];',
   '    if(!ok)return false; } return true; }',
   '',
+  '  // ===== 时间线（玩家游玩经历记录）=====',
+  '  // 记录一条时间线事件；同一 nodeId+subkey 只记录一次（"已解锁"语义，',
+  '  // 也避免读档重入当前节点时重复记录）。返回是否真正新增。',
+  '  function recordTimelineEvent(chapterId, nodeId, type, title, detail, subkey){',
+  '    if(!state.timeline) state.timeline=[];',
+  '    var key = (nodeId||"")+"|"+(subkey||"");',
+  '    for(var i=0;i<state.timeline.length;i++){ if(state.timeline[i]._key===key) return false; }',
+  '    state.timeline.push({ chapterId:chapterId||"", nodeId:nodeId||"", type:type||"", title:title||"", detail:detail||"", ts:Date.now(), _key:key });',
+  '    return true;',
+  '  }',
+  '  function fmtTs(ts){',
+  '    if(!state.timeline||!state.timeline.length) return "00:00";',
+  '    var base = state.timeline[0].ts;',
+  '    var diff = Math.max(0, Math.floor(((ts||base)-base)/1000));',
+  '    var m = Math.floor(diff/60), s = diff%60;',
+  '    return (m<10?"0":"")+m+":"+(s<10?"0":"")+s;',
+  '  }',
+  '',
   '  // ===== 存档 =====',
-  '  function saveProgress(){ try{ var snap={ values:state.values, visitedChapters:state.visitedChapters, playedNodes:state.playedNodes, unlockedAchievements:state.unlockedAchievements, unlockedCollection:state.unlockedCollection, currentChapterId:state.currentChapterId, currentNodeId:state.currentNodeId }; localStorage.setItem(SAVE_KEY, JSON.stringify(snap)); }catch(e){} }',
-  '  function loadProgress(){ try{ var raw=localStorage.getItem(SAVE_KEY); if(!raw)return false; var snap=JSON.parse(raw); state.values=snap.values||state.values; state.visitedChapters=snap.visitedChapters||{}; state.playedNodes=snap.playedNodes||{}; state.unlockedAchievements=snap.unlockedAchievements||{}; state.unlockedCollection=snap.unlockedCollection||{}; return !!snap.currentNodeId; }catch(e){ return false; } }',
+  '  function saveProgress(){ try{ var snap={ values:state.values, visitedChapters:state.visitedChapters, playedNodes:state.playedNodes, unlockedAchievements:state.unlockedAchievements, unlockedCollection:state.unlockedCollection, currentChapterId:state.currentChapterId, currentNodeId:state.currentNodeId, timeline:state.timeline||[] }; localStorage.setItem(SAVE_KEY, JSON.stringify(snap)); }catch(e){} }',
+  '  function loadProgress(){ try{ var raw=localStorage.getItem(SAVE_KEY); if(!raw)return false; var snap=JSON.parse(raw); state.values=snap.values||state.values; state.visitedChapters=snap.visitedChapters||{}; state.playedNodes=snap.playedNodes||{}; state.unlockedAchievements=snap.unlockedAchievements||{}; state.unlockedCollection=snap.unlockedCollection||{}; state.timeline=snap.timeline||[]; return !!snap.currentNodeId; }catch(e){ return false; } }',
   '  function hasProgress(){ try{ return !!localStorage.getItem(SAVE_KEY); }catch(e){ return false; } }',
   '',
   '  // ===== BGM =====',
   '  var bgmEl=null;',
+  '  // 当前媒体节点的暂停/恢复句柄（用于打开时间线时冻结视频/倒计时）',
+  '  var activePlayback=null;',
   '  function playBgm(url){ if(bgmEl){ bgmEl.pause(); bgmEl=null; } if(!url)return; bgmEl=new Audio(url); bgmEl.loop=true; bgmEl.volume=0.5; bgmEl.play().catch(function(){}); }',
   '',
   '  // ===== 场景：起始页 =====',
@@ -543,7 +554,7 @@ const RUNTIME_JS = [
   '  function btnText(style, fallback){ if(!style||style.mode!=="image") return (style&&style.text)||fallback; return style.image?"":fallback; }',
   '',
   '  // ===== 开始/继续 =====',
-  '  function resetGameRun(){ var values={}; (DATA.gameValues||[]).forEach(function(v){ (DATA.characters||[]).forEach(function(c){ values[c.id+"|"+v.id]=v.defaultValue; }); values["|"+v.id]=v.defaultValue; }); state.values=values; state.visitedChapters={}; state.playedNodes={}; }',
+  '  function resetGameRun(){ var values={}; (DATA.gameValues||[]).forEach(function(v){ (DATA.characters||[]).forEach(function(c){ values[c.id+"|"+v.id]=v.defaultValue; }); values["|"+v.id]=v.defaultValue; }); state.values=values; state.visitedChapters={}; state.playedNodes={}; state.timeline=[]; }',
   '  function startGame(){ var ch=firstChapter(); if(!ch){ toast("项目中暂无章节"); return; } resetGameRun(); enterChapter(ch.id, ch.startNodeId); }',
   '  function enterFromSave(){ var ch=findChapter(state.currentChapterId)||firstChapter(); if(!ch)return; renderNodeInChapter(ch, state.currentNodeId); }',
   '',
@@ -562,11 +573,12 @@ const RUNTIME_JS = [
   '    var node=findNodeInChapter(ch,nodeId);',
   '    if(!node){ renderEndingScreen("节点缺失","找不到该节点。",null,function(){ goHome(); }); return; }',
   '    state.currentChapterId=ch.id; state.currentNodeId=nodeId; state.playedNodes[nodeId]=true; checkAchievementsAndCollection(); saveProgress();',
+  '    activePlayback=null;',
   '    clear(); topbar(ch);',
-  '    switch(node.type){ case "video": renderVideo(ch,node); break; case "choice": renderChoice(ch,node); break; case "qte": renderQte(ch,node); break; case "ending": renderEnding(ch,node); break; case "explore": renderExplore(ch,node); break; case "clear": renderClear(ch,node); break; case "condition": evalConditionNode(ch,node); break; default: renderEndingScreen("未知节点","节点类型不支持。",null,function(){ goHome(); }); }',
+  '    switch(node.type){ case "video": renderVideo(ch,node); break; case "choice": renderChoice(ch,node); break; case "ending": renderEnding(ch,node); break; case "clear": renderClear(ch,node); break; case "condition": evalConditionNode(ch,node); break; default: renderEndingScreen("未知节点","节点类型不支持。",null,function(){ goHome(); }); }',
   '  }',
   '',
-  '  function topbar(ch){ var bar=el("div","topbar"); var back=el("button","btn","返回首页"); back.onclick=function(){ if(confirm("返回首页？当前进度已保存。")) goHome(); }; bar.appendChild(back); stage.appendChild(bar); }',
+  '  function topbar(ch){ var bar=el("div","topbar"); var back=el("button","btn","返回首页"); back.onclick=function(){ if(confirm("返回首页？当前进度已保存。")) goHome(); }; bar.appendChild(back); var tl=el("button","btn","⏱ 时间线"); tl.onclick=openTimeline; bar.appendChild(tl); stage.appendChild(bar); }',
   '',
   '  function gotoNode(ch, nodeId){ if(nodeId){ renderNodeInChapter(ch, nodeId); } else { renderEndingScreen("流程结束","当前分支已结束。",null,function(){ goHome(); }); } }',
   '',
@@ -574,11 +586,14 @@ const RUNTIME_JS = [
   '  function renderVideo(ch, node){',
   '    var v=findVideo(node.videoId);',
   '    if(!v||!v.url){ renderEndingScreen("无视频","该节点未配置可播放的视频。",null,function(){ gotoNode(ch,node.nextNodeId); }); return; }',
+  '    recordTimelineEvent(ch.id, node.id, "video", node.name||v.name||"播片", "", "");',
   '    var ve=el("video","video-el"); ve.src=v.url; ve.playsInline=true; ve.controls=true; stage.appendChild(ve);',
   '    applyValueChanges(node.valueChanges);',
   '    var advanced=false; function next(){ if(advanced)return; advanced=true; gotoNode(ch,node.nextNodeId); }',
   '    ve.addEventListener("ended", next);',
   '    var skip=el("button","btn","跳过 ▶"); skip.style.position="absolute"; skip.style.bottom="16px"; skip.style.right="16px"; skip.style.background="rgba(0,0,0,0.6)"; skip.style.padding="8px 16px"; skip.style.borderRadius="8px"; skip.onclick=next; stage.appendChild(skip);',
+  '    // 提供给时间线：暂停/恢复视频，进度由 currentTime 保留',
+  '    activePlayback={ pause:function(){ try{ve.pause();}catch(e){} }, resume:function(){ ve.play().catch(function(){}); } };',
   '    ve.play().catch(function(){});',
   '  }',
   '',
@@ -586,38 +601,25 @@ const RUNTIME_JS = [
   '  function renderChoice(ch, node){',
   '    var wrap=el("div","choice-wrap");',
   '    wrap.appendChild(el("div","choice-prompt",escapeHtml(node.prompt||"请做出选择")));',
-  '    if(node.hasCountdown){ var cd=el("div","countdown"); cd.textContent=node.countdownSeconds+"s"; wrap.appendChild(cd); var left=node.countdownSeconds||10; var t=setInterval(function(){ left--; cd.textContent=left+"s"; if(left<=0){ clearInterval(t); var def=node.options.find(function(o){return o.id===node.defaultOptionId;})||node.options[0]; if(def) pickOption(ch,node,def); } },1000); }',
+  '    if(node.hasCountdown){',
+  '      var cd=el("div","countdown"); cd.textContent=node.countdownSeconds+"s"; wrap.appendChild(cd);',
+  '      var left=node.countdownSeconds||10;',
+  '      function fireDefault(){ var def=(node.options||[]).find(function(o){return o.id===node.defaultOptionId;})||node.options[0]; if(def) pickOption(ch,node,def); }',
+  '      function startTimer(){ cd.textContent=left+"s"; timer=setInterval(function(){ left--; cd.textContent=left+"s"; if(left<=0){ stopTimer(); fireDefault(); } },1000); }',
+  '      function stopTimer(){ if(timer){ clearInterval(timer); timer=null; } }',
+  '      var timer=null; startTimer();',
+  '      // 倒计时暂停/恢复（resume 用剩余秒数重建定时器）',
+  '      activePlayback={ pause:stopTimer, resume:startTimer };',
+  '    }',
   '    (node.options||[]).forEach(function(opt){ var b=el("button","choice-btn btn",escapeHtml(opt.text||"选项")); b.onclick=function(){ pickOption(ch,node,opt); }; wrap.appendChild(b); });',
   '    stage.appendChild(wrap);',
   '  }',
-  '  function pickOption(ch,node,opt){ applyValueChanges(opt.valueChanges); gotoNode(ch, opt.nextNodeId); }',
-  '',
-  '  // QTE',
-  '  function renderQte(ch, node){',
-  '    var wrap=el("div","ending-wrap");',
-  '    wrap.appendChild(el("div","choice-prompt",escapeHtml(node.description||"快速反应！")));',
-  '    var bar=el("div","qte-bar"); var fill=el("div"); fill.style.width="100%"; bar.appendChild(fill); wrap.appendChild(bar);',
-  '    var act=el("button","btn qte-action","点我！"); wrap.appendChild(act);',
-  '    stage.appendChild(wrap);',
-  '    var time=(node.timeLimit||5)*1000, start=Date.now(), done=false;',
-  '    function fail(){ if(done)return; done=true; act.textContent="失败"; act.classList.add("fail"); applyValueChanges(node.valueChangesOnFail); setTimeout(function(){ gotoNode(ch,node.failNodeId); },600); }',
-  '    function success(){ if(done)return; done=true; act.textContent="成功！"; applyValueChanges(node.valueChangesOnSuccess); setTimeout(function(){ gotoNode(ch,node.successNodeId); },600); }',
-  '    act.onclick=success;',
-  '    var raf; function tick(){ var p=Math.max(0,1-(Date.now()-start)/time); fill.style.width=(p*100)+"%"; if(p<=0){ fail(); return; } if(!done) raf=requestAnimationFrame(tick); } raf=requestAnimationFrame(tick);',
-  '  }',
+  '  function pickOption(ch,node,opt){ recordTimelineEvent(ch.id, node.id, "choice", node.prompt||"做出选择", "选择："+(opt.text||"选项"), opt.id); applyValueChanges(opt.valueChanges); gotoNode(ch, opt.nextNodeId); }',
   '',
   '  // 结局',
-  '  function renderEnding(ch, node){ var img=node.endingImage?el("img","ending-img"):null; if(img)img.src=node.endingImage; renderEndingScreen(node.title||"结局", node.description||"", img, function(){ goHome(); }, "回到首页"); }',
-  '  function renderClear(ch, node){ renderEndingScreen(node.title||"恭喜通关！", node.description||"", null, function(){ goHome(); }, "回到首页"); }',
+  '  function renderEnding(ch, node){ recordTimelineEvent(ch.id, node.id, "ending", node.title||"结局", node.description||"", ""); var img=node.endingImage?el("img","ending-img"):null; if(img)img.src=node.endingImage; renderEndingScreen(node.title||"结局", node.description||"", img, function(){ goHome(); }, "回到首页"); }',
+  '  function renderClear(ch, node){ recordTimelineEvent(ch.id, node.id, "clear", node.title||"恭喜通关！", node.description||"", ""); renderEndingScreen(node.title||"恭喜通关！", node.description||"", null, function(){ goHome(); }, "回到首页"); }',
   '  function renderEndingScreen(title, desc, img, onAction, actionLabel){ var wrap=el("div","ending-wrap"); if(img)wrap.appendChild(img); wrap.appendChild(el("div","title",escapeHtml(title))); if(desc)wrap.appendChild(el("div","subtitle",escapeHtml(desc))); var b=el("button","btn"); b.textContent=actionLabel||"继续"; b.style.background="#2563eb"; b.style.color="#fff"; b.style.padding="12px 28px"; b.style.borderRadius="12px"; b.style.fontSize="16px"; b.onclick=onAction; wrap.appendChild(b); stage.appendChild(wrap); }',
-  '',
-  '  // 探索',
-  '  function renderExplore(ch, node){',
-  '    if(node.backgroundImage){ var bg=layer(); bg.style.backgroundImage="url(\'"+node.backgroundImage+"\')"; bg.style.backgroundSize="cover"; bg.style.backgroundPosition="center"; } else { stage.style.background="#222"; }',
-  '    var hint=el("div","subtitle"); hint.style.position="absolute"; hint.style.top="12px"; hint.style.left="50%"; hint.style.transform="translateX(-50%)"; hint.style.background="rgba(0,0,0,0.4)"; hint.style.padding="6px 14px"; hint.style.borderRadius="999px"; hint.textContent="点击场景中的热点探索"; stage.appendChild(hint);',
-  '    (node.hotspots||[]).forEach(function(hs){ var b=el("button","hotspot",escapeHtml(hs.label||"")); b.style.left=(hs.x||0)+"px"; b.style.top=(hs.y||0)+"px"; b.style.width=(hs.width||80)+"px"; b.style.height=(hs.height||40)+"px"; b.onclick=function(){ applyValueChanges(hs.valueChanges); gotoNode(ch, hs.nextNodeId||node.nextNodeId); }; stage.appendChild(b); });',
-  '    if(node.nextNodeId){ var cont=el("button","btn","继续 ▶"); cont.style.position="absolute"; cont.style.bottom="16px"; cont.style.right="16px"; cont.style.background="rgba(0,0,0,0.6)"; cont.style.padding="8px 16px"; cont.style.borderRadius="8px"; cont.onclick=function(){ gotoNode(ch,node.nextNodeId); }; stage.appendChild(cont); }',
-  '  }',
   '',
   '  // 条件分支',
   '  function evalConditionNode(ch, node){ var ok=evalGroup(node.conditionGroup); gotoNode(ch, ok?node.trueNodeId:node.falseNodeId); }',
@@ -627,6 +629,78 @@ const RUNTIME_JS = [
   '  function renderAchievements(){ renderPanel("游戏成就", function(body){ var g=el("div","grid"); (DATA.achievements||[]).forEach(function(a){ var c=el("div","card"+(state.unlockedAchievements[a.id]?"":" locked")); var img=a.image?el("img"):el("div"); if(a.image){img.src=a.image;} else { img.style.height="120px"; img.style.display="flex"; img.style.alignItems="center"; img.style.justifyContent="center"; img.textContent="🏆"; } c.appendChild(img); c.appendChild(el("h4","",escapeHtml(a.name))); c.appendChild(el("p","",escapeHtml(a.description))); g.appendChild(c); }); if(!(DATA.achievements||[]).length) body.appendChild(el("p","subtitle","暂无成就")); else body.appendChild(g); }); }',
   '  function renderCollection(){ renderPanel("图鉴", function(body){ var g=el("div","grid"); (DATA.collection||[]).forEach(function(en){ var c=el("div","card"+(state.unlockedCollection[en.id]?"":" locked")); var ch=findCharacter(en.characterId); var img=el("div"); img.style.height="120px"; img.style.display="flex"; img.style.alignItems="center"; img.style.justifyContent="center"; img.style.background="#222"; img.style.borderRadius="8px"; img.style.marginBottom="8px"; if(ch&&ch.avatar){ var im=el("img"); im.src=ch.avatar; im.style.width="100%"; im.style.height="120px"; im.style.objectFit="cover"; im.style.borderRadius="8px"; img=im; } else { img.textContent="👤"; img.style.fontSize="40px"; } c.appendChild(img); c.appendChild(el("h4","",escapeHtml(ch?ch.name:"未知角色"))); c.appendChild(el("p","",escapeHtml(en.description))); g.appendChild(c); }); if(!(DATA.collection||[]).length) body.appendChild(el("p","subtitle","暂无图鉴")); else body.appendChild(g); }); }',
   '  function renderSettings(){ renderPanel("设置", function(body){ var s=el("div","card"); s.appendChild(el("h4","",DATA.name||"互动影游")); body.appendChild(s); if(hasProgress()){ var reset=el("button","btn","清除存档并重新开始"); reset.style.marginTop="16px"; reset.style.background="#ef4444"; reset.style.color="#fff"; reset.style.padding="10px 18px"; reset.style.borderRadius="8px"; reset.onclick=function(){ if(confirm("确定清除存档？")){ try{localStorage.removeItem(SAVE_KEY);}catch(e){} goHome(); } }; body.appendChild(reset); } }); }',
+  '',
+  '  // ===== 时间线面板（叠加层，不清空舞台，可冻结媒体后随时返回）=====',
+  '  var timelineOverlay=null;',
+  '  function openTimeline(){',
+  '    if(timelineOverlay) return;',
+  '    // 真正暂停：冻结当前视频/倒计时',
+  '    if(activePlayback){ try{ activePlayback.pause(); }catch(e){} }',
+  '    var ov=el("div","panel timeline-overlay");',
+  '    var h=el("h2","","⏱ 时间线"); ov.appendChild(h);',
+  '    var hint=el("p","subtitle timeline-hint","关闭后将回到原处继续"); hint.style.marginBottom="14px"; ov.appendChild(hint);',
+  '    var close=el("button","close","×"); close.onclick=closeTimeline; ov.appendChild(close);',
+  '    renderTimelineContent(ov);',
+  '    stage.appendChild(ov);',
+  '    timelineOverlay=ov;',
+  '    ov.scrollTop=0;',
+  '  }',
+  '  function closeTimeline(){',
+  '    if(!timelineOverlay) return;',
+  '    timelineOverlay.remove();',
+  '    timelineOverlay=null;',
+  '    // 恢复暂停的媒体',
+  '    if(activePlayback){ try{ activePlayback.resume(); }catch(e){} }',
+  '  }',
+  '  // 时间线内容：按"各章首个事件出现顺序"分组，每条事件展示圆点+标题+明细+经过时间',
+  '  function renderTimelineContent(ov){',
+  '    var tl=state.timeline||[];',
+  '    if(!tl.length){ ov.appendChild(el("p","subtitle","尚未有游戏记录，开始游戏后这里会按顺序记录你的经历。")); return; }',
+  '    // 按章节首个事件的出现顺序聚合',
+  '    var order=[]; var seen={};',
+  '    for(var i=0;i<tl.length;i++){ var cid=tl[i].chapterId; if(!seen[cid]){ seen[cid]=true; order.push(cid); } }',
+  '    var eventsByChapter={};',
+  '    for(var j=0;j<tl.length;j++){ var key=tl[j].chapterId; if(!eventsByChapter[key]) eventsByChapter[key]=[]; eventsByChapter[key].push(tl[j]); }',
+  '    var typeMeta={',
+  '      video:{ icon:"🎬", label:"播片" },',
+  '      choice:{ icon:"🤔", label:"选择" },',
+  '      ending:{ icon:"🎬", label:"结局" },',
+  '      clear:{ icon:"🏆", label:"通关" }',
+  '    };',
+  '    for(var m=0;m<order.length;m++){',
+  '      var ch=findChapter(order[m]);',
+  '      var card=el("div","timeline-chapter");',
+  '      // 章节标题（锚点 + 名称 + 描述）',
+  '      var head=el("div","timeline-chapter-head");',
+  '      var anchor=el("div","timeline-chapter-anchor", escapeHtml((m+1)+""));',
+  '      head.appendChild(anchor);',
+  '      var headInfo=el("div","");',
+  '      headInfo.appendChild(el("div","timeline-chapter-name", escapeHtml(ch?(ch.name||"未命名章节"):"（未知章节）")));',
+  '      if(ch&&ch.description) headInfo.appendChild(el("div","timeline-chapter-desc", escapeHtml(ch.description)));',
+  '      head.appendChild(headInfo);',
+  '      card.appendChild(head);',
+  '      // 该章事件节点：卡片之间用 ▼ 箭头连接，形成流程图',
+  '      var evs=eventsByChapter[order[m]]||[];',
+  '      for(var n=0;n<evs.length;n++){',
+  '        if(n>0) card.appendChild(el("div","timeline-arrow","▼")); // 节点之间的箭头连线',
+  '        var ev=evs[n]; var meta=typeMeta[ev.type]||{icon:"●",label:"事件"};',
+  '        var isEnd=(ev.type==="ending"||ev.type==="clear");',
+  '        var row=el("div","timeline-event"+(isEnd?" end":""));',
+  '        var c=el("div","timeline-event-card");',
+  '        var inner=el("div","timeline-event-row");',
+  '        var mainEl=el("div","timeline-event-main");',
+  '        mainEl.appendChild(el("div","timeline-event-tag", escapeHtml(meta.icon+" "+meta.label)));',
+  '        mainEl.appendChild(el("div","timeline-event-title", escapeHtml(ev.title||(meta.label))));',
+  '        if(ev.detail) mainEl.appendChild(el("div","timeline-event-detail", escapeHtml(ev.detail)));',
+  '        inner.appendChild(mainEl);',
+  '        inner.appendChild(el("div","timeline-event-ts", fmtTs(ev.ts)));',
+  '        c.appendChild(inner);',
+  '        row.appendChild(c);',
+  '        card.appendChild(row);',
+  '      }',
+  '      ov.appendChild(card);',
+  '    }',
+  '  }',
   '',
   '  function goHome(){ if(bgmEl){ bgmEl.pause(); bgmEl=null; } renderStartPage(); }',
   '',

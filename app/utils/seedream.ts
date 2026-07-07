@@ -157,36 +157,35 @@ export async function generateSeedreamImage(
     const client = createSeedreamClient(clientOptions)
     const model = options.model || DEFAULT_SEEDREAM_MODEL
 
-    const extraBody: Record<string, unknown> = {
-      watermark: options.watermark ?? false,
-    }
-
-    if (options.image) {
-      extraBody.image = options.image
-    }
-
-    if (options.sequentialImageGeneration) {
-      extraBody.sequential_image_generation = options.sequentialImageGeneration
-    }
-
-    if (typeof options.maxImages === 'number' && options.maxImages > 0) {
-      extraBody.sequential_image_generation_options = {
-        max_images: options.maxImages,
-      }
-    }
-
-    if (options.enableWebSearch) {
-      extraBody.tools = [{ type: 'web_search' }]
-    }
-
-    const request = {
+    // 注意：OpenAI JS SDK v6 不会将 `extra_body` 展平到请求体顶层，
+    // 而 ARK（火山方舟）要求 image / watermark / sequential_image_generation 等
+    // 字段直接位于请求体顶层，因此这里把它们直接合并进 request，而不是放进 extra_body。
+    const request: Record<string, unknown> = {
       model,
       prompt: options.prompt,
       size: options.size || '2K',
       output_format: options.outputFormat || 'png',
       response_format: options.responseFormat || 'b64_json',
       stream: options.stream ?? false,
-      extra_body: extraBody,
+      watermark: options.watermark ?? false,
+    }
+
+    if (options.image) {
+      request.image = options.image
+    }
+
+    if (options.sequentialImageGeneration) {
+      request.sequential_image_generation = options.sequentialImageGeneration
+    }
+
+    if (typeof options.maxImages === 'number' && options.maxImages > 0) {
+      request.sequential_image_generation_options = {
+        max_images: options.maxImages,
+      }
+    }
+
+    if (options.enableWebSearch) {
+      request.tools = [{ type: 'web_search' }]
     }
 
     const response = await client.images.generate(request as any)

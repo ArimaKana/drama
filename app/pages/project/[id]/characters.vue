@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-1 px-8 py-8 overflow-y-auto bg-gray-50/30">
+  <div class="h-full min-h-0 px-8 py-8 overflow-y-auto bg-gray-50/30">
     <div class="flex justify-between items-center mb-8">
       <div>
         <h3 class="text-xl font-bold text-gray-900 tracking-tight">角色管理</h3>

@@ -9,9 +9,7 @@ import type {
   StoryNode,
   VideoNode,
   ChoiceNode,
-  QTENode,
   EndingNode,
-  ExploreNode,
   ClearNode,
   ConditionNode,
   Gender,
@@ -38,7 +36,7 @@ const boolSchema = z.coerce.boolean().catch(false)
 
 const genderSchema = z.enum(['male', 'female', 'other']).catch('other')
 const operatorSchema = z.enum(['>', '<', '>=', '<=', '==', '!=']).catch('>=')
-const nodeTypeSchema = z.enum(['video', 'choice', 'qte', 'ending', 'clear', 'condition', 'explore']).catch('video')
+const nodeTypeSchema = z.enum(['video', 'choice', 'ending', 'clear', 'condition']).catch('video')
 const conditionTypeSchema = z.enum(['value', 'chapter_unlock', 'node_played']).catch('value')
 const imageKindSchema = z.enum(['character', 'scene', 'ending', 'startpage', 'ui', 'icon', 'storyboard']).catch('scene')
 const logicSchema = z.enum(['and', 'or']).catch('and')
@@ -64,13 +62,6 @@ const blueprintNodeSchema = z.object({
   countdownSeconds: numberSchema,
   defaultOptionRef: nullableStringSchema,
   options: z.array(optionRefSchema).catch([]),
-  // qte
-  description: stringSchema,
-  timeLimit: numberSchema,
-  successRef: nullableStringSchema,
-  failRef: nullableStringSchema,
-  successValueEffects: z.array(z.any()).catch([]),
-  failValueEffects: z.array(z.any()).catch([]),
   // ending / clear
   title: stringSchema,
   // ending
@@ -171,7 +162,7 @@ export async function parseNovelStory(options: ParseStoryOptions): Promise<Story
     '一、设计目标：',
     '1. 生成 4-8 个章节，每章必须包含一条完整可玩的故事线（由 nodes 构成的有向图），',
     '   绝不能只返回章节名/梗概。章与章之间通过章节顺序自然衔接（玩家通关一章进入下一章）。',
-    '2. 每章 nodes 至少 5 个，推荐结构：开场播片(video) → 关键选择(choice) → 分支播片或QTE → 探索(explore) → 结局/过渡。',
+    '2. 每章 nodes 至少 5 个，推荐结构：开场播片(video) → 关键选择(choice) → 分支播片 → 结局/过渡。',
     '   重要分支要走到不同结局(ending) 或汇合，最终章用 clear(通关) 收尾。',
     '3. 所有节点用 refId 字符串互相引用（nextRef/successRef/options.nextRef 等），不要用真实 id。',
     '4. 生成 3-6 个核心数值 gameValues（如好感度、信任值、体力），并在选项/节点的 valueEffects 里引用它们（valueRef）。',
@@ -314,8 +305,6 @@ function normalizeNode(n: any, nIdx: number, chapterRefId: string): any {
   }
   // 跳转字段别名归一
   node.nextRef = pickRef(node, ['nextRef', 'nextNodeId', 'next', 'nextNode', 'target', 'targetNode', 'to'])
-  node.successRef = pickRef(node, ['successRef', 'successNodeId', 'successNode', 'success', 'onSuccess'])
-  node.failRef = pickRef(node, ['failRef', 'failNodeId', 'failNode', 'fail', 'onFail'])
   node.trueRef = pickRef(node, ['trueRef', 'trueNodeId', 'trueNode', 'onTrue'])
   node.falseRef = pickRef(node, ['falseRef', 'falseNodeId', 'falseNode', 'onFalse'])
   node.defaultOptionRef = pickRef(node, ['defaultOptionRef', 'defaultOptionId', 'defaultOption'])
@@ -335,8 +324,6 @@ function normalizeNode(n: any, nIdx: number, chapterRefId: string): any {
 
   // valueEffects / conditions 归一化
   node.valueEffects = normalizeEffects(node.valueEffects ?? node.valueChanges ?? node.effects)
-  node.successValueEffects = normalizeEffects(node.successValueEffects ?? node.successValueChanges)
-  node.failValueEffects = normalizeEffects(node.failValueEffects ?? node.failValueChanges)
   if (Array.isArray(node.conditions)) {
     node.conditions = node.conditions.map((c: any) => normalizeCondition(c))
   }
@@ -519,17 +506,6 @@ function buildChapterNodes(
           })),
         } as ChoiceNode)
         break
-      case 'qte':
-        realNodes.push({
-          ...base,
-          description: bn.description || '快速反应！',
-          timeLimit: bn.timeLimit || 5,
-          successNodeId: bn.successRef ?? null,
-          failNodeId: bn.failRef ?? null,
-          valueChangesOnSuccess: mapValueEffects(bn.successValueEffects, refs),
-          valueChangesOnFail: mapValueEffects(bn.failValueEffects, refs),
-        } as QTENode)
-        break
       case 'ending':
         realNodes.push({
           ...base,
@@ -537,14 +513,6 @@ function buildChapterNodes(
           description: bn.description || '',
           endingImage: '',
         } as EndingNode)
-        break
-      case 'explore':
-        realNodes.push({
-          ...base,
-          backgroundImage: '',
-          hotspots: [],
-          nextNodeId: bn.nextRef ?? null,
-        } as ExploreNode)
         break
       case 'clear':
         realNodes.push({
@@ -574,8 +542,6 @@ function buildChapterNodes(
   }
   for (const node of realNodes as any[]) {
     if (node.nextNodeId != null) node.nextNodeId = resolveRef(node.nextNodeId)
-    if (node.successNodeId != null) node.successNodeId = resolveRef(node.successNodeId)
-    if (node.failNodeId != null) node.failNodeId = resolveRef(node.failNodeId)
     if (node.trueNodeId != null) node.trueNodeId = resolveRef(node.trueNodeId)
     if (node.falseNodeId != null) node.falseNodeId = resolveRef(node.falseNodeId)
     if (node.defaultOptionId != null) node.defaultOptionId = resolveRef(node.defaultOptionId)
@@ -602,9 +568,7 @@ function defaultNodeName(type: string): string {
   const names: Record<string, string> = {
     video: '剧情',
     choice: '选择',
-    qte: 'QTE',
     ending: '结局',
-    explore: '探索',
     clear: '通关',
     condition: '条件分支',
   }

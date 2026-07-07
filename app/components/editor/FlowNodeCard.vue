@@ -31,9 +31,9 @@
         :style="{ left: `${(Number(idx) + 1) * 100 / ((node.data as any).options.length + 1)}%`, borderColor: color }"
       />
     </template>
-    <template v-else-if="node.data?.type === 'qte' || node.data?.type === 'condition'">
-      <Handle type="source" :position="Position.Bottom" :id="node.data?.type === 'qte' ? 'success' : 'true'" class="w-3 h-3 bg-white border-2 transition-transform hover:scale-125" :style="{ left: '30%', borderColor: color }" />
-      <Handle type="source" :position="Position.Bottom" :id="node.data?.type === 'qte' ? 'fail' : 'false'" class="w-3 h-3 bg-white border-2 transition-transform hover:scale-125" :style="{ left: '70%', borderColor: color }" />
+    <template v-else-if="node.data?.type === 'condition'">
+      <Handle type="source" :position="Position.Bottom" id="true" class="w-3 h-3 bg-white border-2 transition-transform hover:scale-125" :style="{ left: '30%', borderColor: color }" />
+      <Handle type="source" :position="Position.Bottom" id="false" class="w-3 h-3 bg-white border-2 transition-transform hover:scale-125" :style="{ left: '70%', borderColor: color }" />
     </template>
     <template v-else-if="node.data?.type !== 'ending' && node.data?.type !== 'clear'">
       <Handle type="source" :position="Position.Bottom" id="next" class="w-3 h-3 bg-white border-2 transition-transform hover:scale-125" :style="{ borderColor: color }" />

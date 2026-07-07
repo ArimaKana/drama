@@ -80,7 +80,7 @@ export interface ConditionGroup {
 }
 
 // ============== 节点类型 ==============
-export type NodeType = 'video' | 'choice' | 'qte' | 'ending' | 'explore' | 'clear' | 'condition'
+export type NodeType = 'video' | 'choice' | 'ending' | 'clear' | 'condition'
 
 export interface BaseNode extends BaseEntity {
   type: NodeType
@@ -124,42 +124,12 @@ export interface ChoiceNode extends BaseNode {
   options: ChoiceOption[]
 }
 
-// QTE 节点
-export interface QTENode extends BaseNode {
-  type: 'qte'
-  description: string
-  timeLimit: number // 秒
-  successNodeId: string | null
-  failNodeId: string | null
-  valueChangesOnSuccess: ValueChange[]
-  valueChangesOnFail: ValueChange[]
-}
-
 // 结局节点
 export interface EndingNode extends BaseNode {
   type: 'ending'
   title: string
   description: string
   endingImage: string
-}
-
-// 探索节点
-export interface ExploreNode extends BaseNode {
-  type: 'explore'
-  backgroundImage: string
-  hotspots: ExploreHotspot[]
-  nextNodeId: string | null
-}
-
-export interface ExploreHotspot {
-  id: string
-  x: number
-  y: number
-  width: number
-  height: number
-  label: string
-  nextNodeId: string | null
-  valueChanges: ValueChange[]
 }
 
 // 通关节点
@@ -177,7 +147,7 @@ export interface ConditionNode extends BaseNode {
   falseNodeId: string | null
 }
 
-export type StoryNode = VideoNode | ChoiceNode | QTENode | EndingNode | ExploreNode | ClearNode | ConditionNode
+export type StoryNode = VideoNode | ChoiceNode | EndingNode | ClearNode | ConditionNode
 
 // ============== 章节类型 ==============
 export interface Chapter extends BaseEntity {
