@@ -24,6 +24,7 @@ pub fn run() {
             project::save_base64_asset,
             project::read_asset_as_base64,
             project::write_export_file,
+            project::export_game_assets,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

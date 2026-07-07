@@ -1,11 +1,14 @@
 import type { Project } from '~/types'
-import { isTauriRuntime } from '~/utils/runtime'
-import { exportProjectAsHtml } from '~/utils/exportGame'
+import { exportProjectForFolder, sanitizeFilename } from '~/utils/exportGame'
 
 /**
- * 导出当前项目为可玩的 H5 游戏（单文件 HTML）。
- * - 桌面端（Tauri）：弹出保存对话框，将自包含 HTML 写入用户选择的路径。
- * - 浏览器端：作为 .html 文件下载。
+ * 导出当前项目为可玩的 H5 游戏（一个文件夹：index.html + assets/）。
+ *
+ * 流程：
+ *  1. 生成 index.html（资源引用为相对路径 assets/<filename>）+ 需复制的资源文件名列表。
+ *  2. 弹目录选择对话框，让用户选择父目录。
+ *  3. 在父目录下创建以项目名命名的子文件夹。
+ *  4. 调 Rust 命令批量复制资源到 <文件夹>/assets/，再写入 index.html。
  */
 export function useExportGame() {
   const isExporting = ref(false)
@@ -15,25 +18,42 @@ export function useExportGame() {
     if (!project) {
       return { ok: false, error: '请先打开项目' }
     }
+    if (!project.path) {
+      return { ok: false, error: '当前项目没有本地路径，无法导出' }
+    }
     if (!project.chapters || project.chapters.length === 0) {
       return { ok: false, error: '项目中暂无章节，无法导出' }
     }
 
     isExporting.value = true
     try {
-      const { html, filename } = await exportProjectAsHtml(project)
+      const { html, assetFiles } = await exportProjectForFolder(project)
+      const folderName = sanitizeFilename(project.name || 'game')
 
-      if (isTauriRuntime()) {
-        const savedPath = await saveViaTauri(html, filename)
-        if (!savedPath) {
-          // 用户取消了保存对话框
-          return { ok: false }
-        }
-        return { ok: true, path: savedPath }
+      const { open } = await import('@tauri-apps/plugin-dialog')
+      const parentDir = await open({ directory: true, multiple: false, title: '选择导出位置' })
+      if (!parentDir || (Array.isArray(parentDir) && parentDir.length === 0)) {
+        // 用户取消了目录选择
+        return { ok: false }
       }
+      const parent = Array.isArray(parentDir) ? parentDir[0] : parentDir
 
-      downloadInBrowser(html, filename)
-      return { ok: true }
+      const { join } = await import('@tauri-apps/api/path')
+      const { invoke } = await import('@tauri-apps/api/core')
+      const targetDir = await join(parent, folderName)
+
+      // 批量复制资源（远程 URL 资源不在此列表内，无需复制）
+      await invoke('export_game_assets', {
+        projectPath: project.path,
+        targetDir,
+        assets: assetFiles,
+      })
+
+      // 写入 index.html
+      const indexHtmlPath = await join(targetDir, 'index.html')
+      await invoke('write_export_file', { path: indexHtmlPath, content: html })
+
+      return { ok: true, path: targetDir }
     } catch (error: any) {
       return { ok: false, error: error?.message || '导出失败' }
     } finally {
@@ -45,29 +65,4 @@ export function useExportGame() {
     isExporting,
     exportGame,
   }
-}
-
-async function saveViaTauri(html: string, defaultFilename: string): Promise<string | null> {
-  const { save } = await import('@tauri-apps/plugin-dialog')
-  const filePath = await save({
-    defaultPath: defaultFilename,
-    filters: [{ name: 'HTML', extensions: ['html'] }],
-  })
-  if (!filePath) return null
-
-  const { invoke } = await import('@tauri-apps/api/core')
-  await invoke('write_export_file', { path: filePath, content: html })
-  return filePath
-}
-
-function downloadInBrowser(html: string, filename: string) {
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

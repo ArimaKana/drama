@@ -1,26 +1,26 @@
 import type { Project } from '~/types'
-import { isTauriRuntime } from '~/utils/runtime'
 
 /**
- * 将当前项目导出为一个可玩的 H5 游戏（单文件 HTML，双击即可在浏览器运行）。
+ * 将当前项目导出为一个可玩的 H5 游戏文件夹（index.html + assets/）。
  *
  * 实现思路：
  *  1. 收集项目中所有被引用的资源（按 asset id 与 url 两种形式）。
- *  2. 在桌面端（Tauri）把这些本地资源文件读取并内联为 data URI，
- *     使导出的 HTML 完全自包含、可离线游玩；浏览器端则保留原始 URL。
- *  3. 把项目数据（已内联资源）+ 一段原生 JS 游戏运行时拼装成单个 HTML。
+ *  2. 把本地资源映射为相对路径 `assets/<filename>`，运行时由浏览器按需加载，
+ *     避免单文件 base64 内联导致的体积膨胀与卡顿；远程 URL 原样保留。
+ *  3. 把项目数据（资源已转为相对路径）+ 一段原生 JS 游戏运行时拼装成 index.html。
+ *
+ * 调用方（composable）负责选择目录、复制资源文件、写入 index.html。
  */
-export async function exportProjectAsHtml(project: Project): Promise<{ html: string; filename: string }> {
+export async function exportProjectForFolder(project: Project): Promise<{ html: string; assetFiles: string[] }> {
   const referenced = collectReferencedAssets(project)
-  const { idToDataUri, urlToDataUri } = await buildAssetMaps(project, referenced)
+  const { idToPath, urlToPath, assetFiles } = buildAssetPathMaps(project, referenced)
 
   // 生成精简后的运行数据：去掉编辑器专用字段，避免泄露本地路径。
-  const runtimeData = buildRuntimeData(project, idToDataUri, urlToDataUri)
+  const runtimeData = buildRuntimeData(project, idToPath, urlToPath)
   const dataJson = JSON.stringify(runtimeData)
 
   const html = buildHtmlShell(dataJson)
-  const filename = sanitizeFilename(project.name || 'game') + '.html'
-  return { html, filename }
+  return { html, assetFiles }
 }
 
 // ============== 资源收集 ==============
@@ -102,11 +102,14 @@ function collectReferencedAssets(project: Project): CollectedAssets {
   return { urlRefs }
 }
 
-// ============== 资源内联 ==============
+// ============== 资源路径映射 ==============
 
-function isInlineableRef(ref: string): boolean {
+/**
+ * 判断引用是否为本地资源文件名（需要被复制到导出目录）。
+ * 已是 data URI / 远程地址 / blob 的不处理，原样保留。
+ */
+function isLocalAssetRef(ref: string): boolean {
   if (!ref) return false
-  // 已经是 data URI / 网络地址的不需要再读取本地文件
   if (ref.startsWith('data:')) return false
   if (ref.startsWith('http://') || ref.startsWith('https://')) return false
   if (ref.startsWith('blob:')) return false
@@ -114,49 +117,39 @@ function isInlineableRef(ref: string): boolean {
   return true
 }
 
-async function readAssetAsDataUri(projectPath: string, filename: string): Promise<string | null> {
-  if (!isTauriRuntime()) return null
-  try {
-    const { invoke } = await import('@tauri-apps/api/core')
-    return await invoke<string>('read_asset_as_base64', { projectPath, filename })
-  } catch (error) {
-    console.warn('读取资源失败，将回退为原始引用:', filename, error)
-    return null
-  }
+/**
+ * 将文件名编码为 URL 安全的相对路径（按 / 分段编码，与编辑器 getAssetUrl 一致）。
+ */
+function encodeAssetPath(filename: string): string {
+  return 'assets/' + filename
+    .split('/')
+    .map(segment => encodeURIComponent(segment))
+    .join('/')
 }
 
-async function buildAssetMaps(
+/**
+ * 建立本地资源 → `assets/<filename>` 相对路径的映射。
+ * 返回：
+ *  - idToPath / urlToPath：运行时数据构建时用到的两张映射表
+ *  - assetFiles：需要复制到导出目录 assets/ 下的原始文件名列表（去重）
+ */
+function buildAssetPathMaps(
   project: Project,
   collected: CollectedAssets
-): Promise<{ idToDataUri: Record<string, string>; urlToDataUri: Record<string, string> }> {
-  const projectPath = project.path || ''
-  const urlToDataUri: Record<string, string> = {}
-  const idToDataUri: Record<string, string> = {}
+): { idToPath: Record<string, string>; urlToPath: Record<string, string>; assetFiles: string[] } {
+  const urlToPath: Record<string, string> = {}
+  const idToPath: Record<string, string> = {}
+  const assetFiles: string[] = []
 
-  // 仅桌面端可读取本地文件；浏览器端资源本身就是可访问 URL，保持原样
-  if (!isTauriRuntime() || !projectPath) {
-    return { idToDataUri, urlToDataUri }
-  }
-
-  // 去重待读取文件列表
-  const files = Array.from(collected.urlRefs).filter(isInlineableRef)
-
-  // 并发读取（限制并发数避免一次性打开过多文件句柄）
-  const CONCURRENCY = 8
-  for (let i = 0; i < files.length; i += CONCURRENCY) {
-    const batch = files.slice(i, i + CONCURRENCY)
-    const results = await Promise.all(
-      batch.map(async (filename) => {
-        const dataUri = await readAssetAsDataUri(projectPath, filename)
-        return { filename, dataUri }
-      })
-    )
-    for (const { filename, dataUri } of results) {
-      if (dataUri) urlToDataUri[filename] = dataUri
+  for (const ref of collected.urlRefs) {
+    if (isLocalAssetRef(ref)) {
+      urlToPath[ref] = encodeAssetPath(ref)
+      assetFiles.push(ref)
     }
+    // 远程/data 引用不进映射表，运行时原样返回
   }
 
-  // 为每个素材建立 id → dataUri 映射（通过其 url）
+  // 为每个素材建立 id → 相对路径映射（通过其 url）
   const allAssets = [
     ...project.assets.videos,
     ...project.assets.images,
@@ -166,26 +159,26 @@ async function buildAssetMaps(
   for (const asset of allAssets) {
     const url = (asset.url || '').trim()
     if (!url) continue
-    const dataUri = urlToDataUri[url] || (isInlineableRef(url) ? null : url)
-    if (dataUri) idToDataUri[asset.id] = dataUri
+    const mapped = urlToPath[url] || (isLocalAssetRef(url) ? null : url)
+    if (mapped) idToPath[asset.id] = mapped
   }
 
-  return { idToDataUri, urlToDataUri }
+  return { idToPath, urlToPath, assetFiles }
 }
 
 // ============== 运行时数据构建 ==============
 
 function buildRuntimeData(
   project: Project,
-  idToDataUri: Record<string, string>,
-  urlToDataUri: Record<string, string>
+  idToPath: Record<string, string>,
+  urlToPath: Record<string, string>
 ) {
   // 统一的资源解析器：先按 asset id，再按 url，最后保留原值
   const resolve = (ref: unknown): string => {
     if (typeof ref !== 'string' || !ref) return ''
-    if (idToDataUri[ref]) return idToDataUri[ref]
-    if (urlToDataUri[ref]) return urlToDataUri[ref]
-    // 已是 data/http 或无法内联的资源，原样返回
+    if (idToPath[ref]) return idToPath[ref]
+    if (urlToPath[ref]) return urlToPath[ref]
+    // 已是 data/http 或无法映射的资源，原样返回
     return ref
   }
 
@@ -341,7 +334,7 @@ function normalizeStartPage(sp: any, resolve: (ref: unknown) => string): any {
 
 // ============== 工具 ==============
 
-function sanitizeFilename(name: string): string {
+export function sanitizeFilename(name: string): string {
   const cleaned = name.replace(/[\\/:*?"<>|]/g, '').trim()
   return cleaned || 'game'
 }
@@ -421,7 +414,7 @@ const RUNTIME_JS = [
   '  var orientation = DATA.orientation === "portrait" ? "portrait" : "landscape";',
   '',
   '  // ===== 状态 =====',
-'  var state = createInitialState();',
+  '  var state = createInitialState();',
   '  function createInitialState(){',
   '    var values = {};',
   '    (DATA.gameValues||[]).forEach(function(v){',

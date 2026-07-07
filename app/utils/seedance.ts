@@ -1,5 +1,6 @@
 import { isTauri } from '@tauri-apps/api/core'
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
+import { sanitizeBaseURL } from '~/utils/url'
 
 export type SupportedVideoProvider = 'seedance'
 
@@ -43,7 +44,8 @@ function readObject(value: unknown): Record<string, unknown> | null {
 }
 
 function normalizeApiBaseURL(baseURL?: string): string {
-  const target = (baseURL || DEFAULT_SEEDANCE_BASE_URL).trim()
+  // 非法/空 baseURL（相对路径、缺协议等）回落默认值，避免拼出错误的请求地址
+  const target = sanitizeBaseURL(baseURL, DEFAULT_SEEDANCE_BASE_URL)
   return target.replace(/\/+$/, '')
 }
 

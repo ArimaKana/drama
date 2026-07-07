@@ -1,6 +1,7 @@
 import OpenAI from 'openai'
 import { isTauri } from '@tauri-apps/api/core'
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
+import { sanitizeBaseURL } from '~/utils/url'
 
 export type SupportedImageProvider = 'seedream'
 
@@ -113,7 +114,7 @@ function createSeedreamClient(options: SeedreamClientOptions): OpenAI {
 
   return new OpenAI({
     apiKey: options.apiKey,
-    baseURL: options.baseURL || DEFAULT_SEEDREAM_BASE_URL,
+    baseURL: sanitizeBaseURL(options.baseURL, DEFAULT_SEEDREAM_BASE_URL),
     organization: options.organization,
     project: options.project,
     defaultHeaders: options.headers,

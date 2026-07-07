@@ -88,7 +88,7 @@ export function resolveSeedreamApiKey(
 ): string {
   const providers: ProjectAiTokenProvider[] = []
   providers.push('seedream')
-  if (currentTextProvider && currentTextProvider !== 'ollama') {
+  if (currentTextProvider) {
     providers.push(currentTextProvider)
   }
   providers.push('custom', 'zhipu', 'deepseek', 'kimi')

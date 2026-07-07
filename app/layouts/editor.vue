@@ -48,7 +48,7 @@
           class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg shadow-sm transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0"
           :disabled="isExporting"
           @click="handleExport"
-          title="将当前项目导出为可玩的 H5 游戏（单文件 HTML）"
+          title="将当前项目导出为可玩的 H5 游戏文件夹（index.html + assets/）"
         >
           <span v-if="isExporting" class="w-4 h-4 border-2 border-blue-300 border-t-blue-700 rounded-full animate-spin"></span>
           <span v-else class="text-base leading-none">📦</span>
@@ -137,7 +137,7 @@
               v-model="projectConfig.text.model"
               type="text"
               class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white transition-all"
-              :placeholder="projectConfig.text.provider === 'ollama' ? '必填，例如：qwen2.5:7b' : '留空使用默认模型'"
+              placeholder="留空使用默认模型"
             />
           </div>
 
@@ -147,7 +147,7 @@
               v-model="projectConfig.text.baseURL"
               type="text"
               class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white transition-all"
-              :placeholder="projectConfig.text.provider === 'custom' ? '自定义模型服务地址（建议必填）' : '留空使用 Ollama 默认地址'"
+              placeholder="自定义模型服务地址（建议必填）"
             />
           </div>
 
@@ -157,7 +157,7 @@
               v-model="textToken"
               type="password"
               class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white transition-all"
-              :placeholder="projectConfig.text.provider === 'ollama' ? 'Ollama 可留空' : '仅保存在当前应用本地，不写入项目文件'"
+              placeholder="仅保存在当前应用本地，不写入项目文件"
             />
             <p class="text-xs text-gray-500 mt-1.5">Token 仅存储在本机应用，不会写入项目 JSON。</p>
           </div>
@@ -348,6 +348,7 @@ import {
   applyGeneratedImages,
 } from '~/utils/creativeAssistant'
 import { resolveSeedreamApiKey } from '~/utils/generateAsset'
+import { isValidHttpBaseURL } from '~/utils/url'
 
 const router = useRouter()
 const route = useRoute()
@@ -356,7 +357,7 @@ const toast = useToast()
 const { getToken, setToken } = useAiAppSettings()
 const { isExporting, exportGame } = useExportGame()
 
-const textProviders: ProjectLlmProvider[] = ['zhipu', 'deepseek', 'kimi', 'ollama', 'custom']
+const textProviders: ProjectLlmProvider[] = ['zhipu', 'deepseek', 'kimi', 'custom']
 const imageProviders: ProjectImageProvider[] = ['seedream']
 const videoProviders: ProjectVideoProvider[] = ['seedance']
 const showProjectSettingsDialog = ref(false)
@@ -374,7 +375,7 @@ const assistantBusy = ref(false)
 const assistantStage = ref('')
 const projectConfig = reactive({
   text: {
-    provider: 'zhipu' as ProjectLlmProvider,
+    provider: 'deepseek' as ProjectLlmProvider,
     model: '',
     baseURL: '',
   },
@@ -389,7 +390,7 @@ const projectConfig = reactive({
     baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
   },
 })
-const showTextBaseUrlInput = computed(() => projectConfig.text.provider === 'custom' || projectConfig.text.provider === 'ollama')
+const showTextBaseUrlInput = computed(() => projectConfig.text.provider === 'custom')
 const novelAssets = computed(() => {
   return (store.currentProject?.assets.subtitles || []).filter(asset => isTxtNovelAsset(asset))
 })
@@ -440,7 +441,6 @@ function llmProviderLabel(provider: ProjectLlmProvider) {
   if (provider === 'zhipu') return '智谱'
   if (provider === 'deepseek') return 'DeepSeek'
   if (provider === 'kimi') return 'Kimi'
-  if (provider === 'ollama') return 'Ollama'
   if (provider === 'custom') return '自定义'
   return provider
 }
@@ -491,7 +491,7 @@ function openProjectConfig() {
   }
   const config = store.currentProject.aiConfig
   configTab.value = 'text'
-  projectConfig.text.provider = config.text?.provider || 'zhipu'
+  projectConfig.text.provider = config.text?.provider || 'deepseek'
   projectConfig.text.model = config.text?.model || ''
   projectConfig.text.baseURL = config.text?.baseURL || ''
   projectConfig.image.provider = config.image?.provider || 'seedream'
@@ -566,7 +566,7 @@ async function generateFromNovel() {
     return
   }
 
-  const textProvider = store.currentProject.aiConfig?.text?.provider || 'zhipu'
+  const textProvider = store.currentProject.aiConfig?.text?.provider || 'deepseek'
   const runtime = resolveProjectLlmRuntime(store.currentProject.aiConfig?.text, getToken(textProvider))
   if (!runtime.ok) {
     toast.warning(runtime.error)
@@ -722,12 +722,12 @@ watch(
 
 async function saveProjectConfig() {
   if (!store.currentProject) return
-  if (projectConfig.text.provider === 'ollama' && !projectConfig.text.model.trim()) {
-    toast.warning('Ollama 需要填写模型名称')
-    return
-  }
   if (projectConfig.text.provider === 'custom' && !projectConfig.text.baseURL.trim()) {
     toast.warning('自定义模型提供方需要填写 Base URL')
+    return
+  }
+  if (projectConfig.text.provider === 'custom' && !isValidHttpBaseURL(projectConfig.text.baseURL)) {
+    toast.warning('自定义 Base URL 需以 http:// 或 https:// 开头')
     return
   }
 
@@ -782,8 +782,6 @@ async function handleExport() {
   }
   if (result.path) {
     toast.success('已导出为 H5 游戏：' + result.path)
-  } else {
-    toast.success('已导出为 H5 游戏，浏览器已开始下载')
   }
 }
 </script>

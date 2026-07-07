@@ -8,7 +8,6 @@ function createDefaultTokenMap(): AiTokenMap {
     zhipu: '',
     deepseek: '',
     kimi: '',
-    ollama: '',
     custom: '',
     seedream: '',
     seedance: '',

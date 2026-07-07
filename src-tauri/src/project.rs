@@ -309,3 +309,55 @@ pub fn write_export_file(path: String, content: String) -> Result<(), String> {
     fs::write(file_path, content).map_err(|e| e.to_string())?;
     Ok(())
 }
+
+/// 将项目 assets 目录下的资源文件批量复制到导出目录的 assets 子目录。
+/// 用 fs::copy 直接拷贝原始字节，避免 base64 内联导致的体积膨胀与浏览器卡顿。
+/// 源文件不存在时跳过（不中断整体导出），调用方据此决定是否提示。
+#[tauri::command]
+pub fn export_game_assets(
+    project_path: String,
+    target_dir: String,
+    assets: Vec<String>,
+) -> Result<usize, String> {
+    // 防止把资源导回到项目自身目录内，造成递归复制或文件锁占用
+    let project_dir = PathBuf::from(&project_path);
+    let target = PathBuf::from(&target_dir);
+    let target_canon = target.canonicalize().unwrap_or_else(|_| target.clone());
+    let project_canon = project_dir.canonicalize().unwrap_or_else(|_| project_dir.clone());
+    if target_canon == project_canon || target_canon.starts_with(&project_canon) {
+        return Err("导出目录不能位于项目目录内部".to_string());
+    }
+
+    let src_assets_dir = project_dir.join("assets");
+    let dst_assets_dir = target.join("assets");
+    fs::create_dir_all(&dst_assets_dir).map_err(|e| e.to_string())?;
+
+    let mut copied = 0usize;
+    for name in &assets {
+        // 越界防护：拒绝包含父目录引用的文件名
+        if name.contains("..") {
+            continue;
+        }
+        let trimmed = name.trim_start_matches(['/', '\\']);
+        let src = src_assets_dir.join(trimmed);
+        let dst = dst_assets_dir.join(trimmed);
+        if !src.exists() {
+            continue;
+        }
+        // 确保嵌套子目录存在（资源文件名理论上不含子目录，但稳妥起见）
+        if let Some(parent) = dst.parent() {
+            if !parent.as_os_str().is_empty() {
+                fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            }
+        }
+        match fs::copy(&src, &dst) {
+            Ok(_) => copied += 1,
+            Err(e) => {
+                // 单个资源复制失败不中断整体导出，记录到 stderr
+                eprintln!("复制资源失败 {}: {}", name, e);
+            }
+        }
+    }
+
+    Ok(copied)
+}

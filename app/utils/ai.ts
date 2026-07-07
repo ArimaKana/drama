@@ -2,8 +2,9 @@ import OpenAI from 'openai'
 import { isTauri } from '@tauri-apps/api/core'
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
 import type { ProjectLlmConfig } from '~/types'
+import { isValidHttpBaseURL } from '~/utils/url'
 
-export type SupportedLlmProvider = 'zhipu' | 'deepseek' | 'kimi' | 'ollama' | 'custom'
+export type SupportedLlmProvider = 'zhipu' | 'deepseek' | 'kimi' | 'custom'
 
 type LlmMessageRole = 'system' | 'user' | 'assistant'
 
@@ -67,7 +68,6 @@ const DEFAULT_BASE_URL_BY_PROVIDER: Record<SupportedLlmProvider, string | undefi
   zhipu: 'https://open.bigmodel.cn/api/paas/v4',
   deepseek: 'https://api.deepseek.com/v1',
   kimi: 'https://api.moonshot.cn/v1',
-  ollama: 'http://127.0.0.1:11434/v1',
   custom: undefined,
 }
 
@@ -75,7 +75,6 @@ const DEFAULT_LLM_MODEL_BY_PROVIDER: Record<SupportedLlmProvider, string> = {
   zhipu: 'glm-5',
   deepseek: 'deepseek-v4-pro',
   kimi: 'kimi-k2.5',
-  ollama: 'qwen3:8b',
   custom: 'gpt-4.1-mini',
 }
 
@@ -150,17 +149,10 @@ export function resolveProjectLlmRuntime(config: ProjectLlmConfig | undefined, a
     }
   }
 
-  if (config.provider !== 'ollama' && !apiKey.trim()) {
+  if (!apiKey.trim()) {
     return {
       ok: false,
       error: '请先在项目配置中填写 API Token',
-    }
-  }
-
-  if (config.provider === 'ollama' && !config.model.trim()) {
-    return {
-      ok: false,
-      error: '请先在项目配置中填写 Ollama 模型名称',
     }
   }
 
@@ -168,6 +160,13 @@ export function resolveProjectLlmRuntime(config: ProjectLlmConfig | undefined, a
     return {
       ok: false,
       error: '请先在项目配置中填写自定义 Base URL',
+    }
+  }
+
+  if (config.provider === 'custom' && !isValidHttpBaseURL(config.baseURL)) {
+    return {
+      ok: false,
+      error: '自定义 Base URL 格式不正确，需以 http:// 或 https:// 开头',
     }
   }
 
@@ -184,8 +183,15 @@ export function resolveProjectLlmRuntime(config: ProjectLlmConfig | undefined, a
 
 function createOpenAiClient(options: AiClientOptions): OpenAI {
   const baseURL = options.baseURL ?? DEFAULT_BASE_URL_BY_PROVIDER[options.provider]
-  const apiKey = options.apiKey ?? (options.provider === 'ollama' ? 'ollama' : undefined)
+  const apiKey = options.apiKey ?? undefined
   const useTauriHttp = typeof window !== 'undefined' && isTauri()
+
+  // 兜底：baseURL 非空但非法（相对路径/缺协议等）时，OpenAI SDK 内部 buildURL 会抛
+  // 晦涩的 "Failed to construct 'URL': Invalid URL"。这里先校验，给出可读的中文提示。
+  // 空字符串是允许的（SDK 会兜底为官方默认 URL）。
+  if (baseURL && !isValidHttpBaseURL(baseURL)) {
+    throw new Error('AI 服务地址（Base URL）配置无效，请检查项目配置')
+  }
 
   return new OpenAI({
     apiKey,

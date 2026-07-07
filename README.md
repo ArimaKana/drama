@@ -39,7 +39,7 @@
 
 ### 🤖 AI 辅助创作
 内置多模型集成，支持 AI 生成文案、对话、剧情等内容：
-- **文本 LLM**：智谱 GLM、Kimi、Ollama 本地模型、自定义 OpenAI 兼容接口
+- **文本 LLM**：智谱 GLM、DeepSeek、Kimi、自定义 OpenAI 兼容接口
 - **图像生成**：Seedream
 - **视频生成**：Seedance
 

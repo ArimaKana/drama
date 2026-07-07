@@ -489,7 +489,7 @@ function resolveSeedreamApiKey() {
   const providers: ProjectAiTokenProvider[] = []
   const currentTextProvider = store.currentProject?.aiConfig?.text?.provider
   providers.push('seedream')
-  if (currentTextProvider && currentTextProvider !== 'ollama') {
+  if (currentTextProvider) {
     providers.push(currentTextProvider)
   }
   providers.push('custom', 'zhipu', 'deepseek', 'kimi')
@@ -509,7 +509,7 @@ function resolveSeedanceApiKey() {
   const providers: ProjectAiTokenProvider[] = []
   const currentTextProvider = store.currentProject?.aiConfig?.text?.provider
   providers.push('seedance')
-  if (currentTextProvider && currentTextProvider !== 'ollama') {
+  if (currentTextProvider) {
     providers.push(currentTextProvider)
   }
   providers.push('custom', 'zhipu', 'deepseek', 'kimi')

@@ -26,6 +26,7 @@ import {
   now,
 } from '~/utils/factory'
 import { isTauriRuntime } from '~/utils/runtime'
+import { sanitizeBaseURL } from '~/utils/url'
 
 export const useProjectStore = defineStore('project', () => {
   // 状态
@@ -167,17 +168,18 @@ export const useProjectStore = defineStore('project', () => {
       text: {
         provider: textProvider || provider || defaultConfig.text.provider,
         model: textModel || legacyModel || defaultConfig.text.model,
-        baseURL: textBaseURL || legacyBaseURL || defaultConfig.text.baseURL,
+        // 清洗非法/空 baseURL：text 默认为空，运行时由各 provider 默认值兜底
+        baseURL: sanitizeBaseURL(textBaseURL || legacyBaseURL, defaultConfig.text.baseURL),
       },
       image: {
         provider: imageProvider || defaultConfig.image.provider,
         model: imageModel || defaultConfig.image.model,
-        baseURL: imageBaseURL || defaultConfig.image.baseURL,
+        baseURL: sanitizeBaseURL(imageBaseURL, defaultConfig.image.baseURL),
       },
       video: {
         provider: videoProvider || defaultConfig.video.provider,
         model: videoModel || defaultConfig.video.model,
-        baseURL: videoBaseURL || defaultConfig.video.baseURL,
+        baseURL: sanitizeBaseURL(videoBaseURL, defaultConfig.video.baseURL),
       },
     }
   }
