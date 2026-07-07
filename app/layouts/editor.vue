@@ -80,22 +80,6 @@
             class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white transition-all"
           />
         </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">屏幕方向</label>
-          <div class="flex gap-2 bg-gray-100/80 rounded-lg p-1">
-            <button
-              class="flex-1 px-3 py-1.5 text-sm rounded-md transition"
-              :class="projectOrientation === 'landscape' ? 'bg-white text-blue-700 font-medium shadow-sm' : 'text-gray-600 hover:text-gray-900'"
-              @click="projectOrientation = 'landscape'"
-            >横屏</button>
-            <button
-              class="flex-1 px-3 py-1.5 text-sm rounded-md transition"
-              :class="projectOrientation === 'portrait' ? 'bg-white text-blue-700 font-medium shadow-sm' : 'text-gray-600 hover:text-gray-900'"
-              @click="projectOrientation = 'portrait'"
-            >竖屏</button>
-          </div>
-        </div>
       </div>
       <template #footer>
         <button class="px-4 py-1.5 text-sm border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 transition" @click="showProjectSettingsDialog = false">取消</button>
@@ -333,7 +317,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ProjectLlmProvider, ProjectImageProvider, ProjectVideoProvider, ProjectOrientation, SubtitleAsset } from '~/types'
+import type { ProjectLlmProvider, ProjectImageProvider, ProjectVideoProvider, SubtitleAsset } from '~/types'
 import { useProjectStore } from '~/stores/project'
 import { useToast } from '~/composables/useToast'
 import { useAiAppSettings } from '~/composables/useAiAppSettings'
@@ -362,7 +346,6 @@ const imageProviders: ProjectImageProvider[] = ['seedream']
 const videoProviders: ProjectVideoProvider[] = ['seedance']
 const showProjectSettingsDialog = ref(false)
 const projectName = ref('')
-const projectOrientation = ref<ProjectOrientation>('landscape')
 const showProjectConfigDialog = ref(false)
 const configTab = ref<'text' | 'image' | 'video'>('text')
 const textToken = ref('')
@@ -680,7 +663,6 @@ function openProjectSettings() {
     return
   }
   projectName.value = store.currentProject.name
-  projectOrientation.value = store.currentProject.orientation || 'landscape'
   showProjectSettingsDialog.value = true
 }
 
@@ -693,7 +675,6 @@ async function saveProjectSettings() {
   }
 
   store.currentProject.name = name
-  store.currentProject.orientation = projectOrientation.value
   await store.saveProject()
   showProjectSettingsDialog.value = false
   toast.success('项目配置已保存')

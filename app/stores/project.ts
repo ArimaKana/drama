@@ -184,11 +184,6 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
-  function ensureProjectOrientation(project: Project) {
-    const orientation = (project as { orientation?: unknown }).orientation
-    project.orientation = orientation === 'portrait' ? 'portrait' : 'landscape'
-  }
-
   // ============ 项目操作 ============
   async function loadProjects() {
     try {
@@ -261,7 +256,6 @@ export const useProjectStore = defineStore('project', () => {
         ensureAssetCollections(currentProject.value)
         ensureChapterAndNodeFields(currentProject.value)
         ensureProjectAiConfig(currentProject.value)
-        ensureProjectOrientation(currentProject.value)
         currentProject.value.path = projectPath
         
         // 启动静态资源服务
@@ -278,7 +272,6 @@ export const useProjectStore = defineStore('project', () => {
             ensureAssetCollections(currentProject.value)
             ensureChapterAndNodeFields(currentProject.value)
             ensureProjectAiConfig(currentProject.value)
-            ensureProjectOrientation(currentProject.value)
           }
         }
       }

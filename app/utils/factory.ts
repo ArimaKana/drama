@@ -32,7 +32,6 @@ export function createProject(name: string): Project {
   return {
     id,
     name,
-    orientation: 'landscape',
     cover: '',
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -47,17 +46,18 @@ export function createProject(name: string): Project {
       titleMode: 'text',
       titleText: name,
       titleImage: '',
+      // 相对舞台中心的偏移百分比：x/y=0 为中心，-0.5~0.5 为边界
       menuPosition: {
-        x: 190,
-        y: 126,
+        x: -0.35,
+        y: 0.05,
       },
       titlePosition: {
-        x: 228,
-        y: 53,
+        x: -0.2,
+        y: -0.35,
       },
       settingsPosition: {
-        x: 516,
-        y: 24,
+        x: 0.4,
+        y: -0.4,
       },
       buttonStyles: {
         start: { mode: 'normal', text: '开始游戏', textColor: '#ffffff', backgroundColor: '#2563eb', image: '' },

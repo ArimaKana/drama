@@ -254,7 +254,26 @@
       </div>
 
       <div class="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-6 sticky top-6 h-fit">
-        <h2 class="text-lg font-bold text-gray-900 mb-6">实时预览</h2>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold text-gray-900">实时预览</h2>
+          <div class="flex gap-1 bg-gray-100/80 rounded-lg p-1">
+            <button
+              class="px-2.5 py-1 text-xs rounded-md transition"
+              :class="previewMode === 'portrait' ? 'bg-white text-blue-700 font-medium shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+              @click="previewMode = 'portrait'"
+            >手机竖屏</button>
+            <button
+              class="px-2.5 py-1 text-xs rounded-md transition"
+              :class="previewMode === 'landscape' ? 'bg-white text-blue-700 font-medium shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+              @click="previewMode = 'landscape'"
+            >手机横屏</button>
+            <button
+              class="px-2.5 py-1 text-xs rounded-md transition"
+              :class="previewMode === 'pc' ? 'bg-white text-blue-700 font-medium shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+              @click="previewMode = 'pc'"
+            >PC</button>
+          </div>
+        </div>
         <div
           ref="previewRef"
           class="relative w-full rounded-xl overflow-hidden shadow-md border border-gray-200/80 bg-gray-900 bg-cover bg-center transition-all duration-300"
@@ -276,7 +295,7 @@
           <div
             ref="titleRef"
             class="absolute px-4 cursor-move select-none"
-            :style="{ left: `${form.titlePosition.x}px`, top: `${form.titlePosition.y}px` }"
+            :style="titleStyle"
             @mousedown="startDragTitle"
           >
             <h1 class="text-4xl md:text-5xl font-bold text-white mb-4 drop-shadow-lg tracking-tight">
@@ -295,8 +314,7 @@
             ref="settingsRef"
             class="absolute cursor-move"
             :style="{
-              left: `${form.settingsPosition.x}px`,
-              top: `${form.settingsPosition.y}px`,
+              ...settingsStyle,
               ...resolveButtonStyle(form.buttonStyles.settings, true),
             }"
             :class="resolveButtonClass(false)"
@@ -309,7 +327,7 @@
           <div
             ref="menuRef"
             class="absolute p-3 bg-black/25 backdrop-blur-sm border border-white/20 rounded-xl cursor-move select-none"
-            :style="{ left: `${form.menuPosition.x}px`, top: `${form.menuPosition.y}px` }"
+            :style="menuStyle"
             @mousedown="startDragMenu"
           >
             <div class="flex flex-col gap-2 w-44">
@@ -381,6 +399,13 @@ const draggingTitle = ref(false)
 const draggingSettings = ref(false)
 const dragOffset = reactive({ x: 0, y: 0 })
 
+// 预览模式：手机竖屏 / 手机横屏 / PC（不存进项目，仅编辑器临时切换）
+type PreviewMode = 'portrait' | 'landscape' | 'pc'
+const previewMode = ref<PreviewMode>('landscape')
+// 预览容器实时像素尺寸（供坐标系换算）
+const previewSize = reactive({ w: 0, h: 0 })
+let previewResizeObserver: ResizeObserver | null = null
+
 const form = reactive({
   backgroundType: 'image' as 'image' | 'video',
   backgroundMedia: '',
@@ -388,17 +413,18 @@ const form = reactive({
   titleMode: 'text' as 'text' | 'image' | 'none',
   titleText: '',
   titleImage: '',
+  // position 为相对舞台中心的偏移百分比：x/y=0 中心，-0.5~0.5 边界
   menuPosition: {
-    x: 24,
-    y: 220,
+    x: -0.35,
+    y: 0.05,
   },
   titlePosition: {
-    x: 180,
-    y: 48,
+    x: -0.2,
+    y: -0.35,
   },
   settingsPosition: {
-    x: 560,
-    y: 16,
+    x: 0.4,
+    y: -0.4,
   },
   buttonStyles: createDefaultButtonStyles(),
 })
@@ -443,8 +469,23 @@ const isVideoBackground = computed(() => {
 })
 
 const previewAspectClass = computed(() => {
-  return store.currentProject?.orientation === 'portrait' ? 'aspect-[9/16] max-w-[320px] mx-auto' : 'aspect-video'
+  if (previewMode.value === 'portrait') return 'aspect-[9/16] max-w-[320px] mx-auto'
+  if (previewMode.value === 'pc') return 'h-[460px]'
+  return 'aspect-video'
 })
+
+// 将相对中心的偏移百分比换算为预览容器内的绝对像素定位（锚点在元素自身中心）
+function positionToStyle(pos: { x: number; y: number }) {
+  const { w, h } = previewSize
+  return {
+    left: `${w / 2 + pos.x * w}px`,
+    top: `${h / 2 + pos.y * h}px`,
+    transform: 'translate(-50%, -50%)',
+  }
+}
+const titleStyle = computed(() => positionToStyle(form.titlePosition))
+const menuStyle = computed(() => positionToStyle(form.menuPosition))
+const settingsStyle = computed(() => positionToStyle(form.settingsPosition))
 
 const previewStyle = computed(() => {
   if (isVideoBackground.value) {
@@ -700,18 +741,9 @@ onMounted(async () => {
     form.titleMode = sp.titleMode || 'text'
     form.titleText = sp.titleText || sp.title || store.currentProject.name
     form.titleImage = sp.titleImage || ''
-    form.menuPosition = {
-      x: Number(sp.menuPosition?.x ?? 24),
-      y: Number(sp.menuPosition?.y ?? 220),
-    }
-    form.titlePosition = {
-      x: Number(sp.titlePosition?.x ?? 180),
-      y: Number(sp.titlePosition?.y ?? 48),
-    }
-    form.settingsPosition = {
-      x: Number(sp.settingsPosition?.x ?? 560),
-      y: Number(sp.settingsPosition?.y ?? 16),
-    }
+    form.menuPosition = migratePosition(sp.menuPosition, { x: -0.35, y: 0.05 })
+    form.titlePosition = migratePosition(sp.titlePosition, { x: -0.2, y: -0.35 })
+    form.settingsPosition = migratePosition(sp.settingsPosition, { x: 0.4, y: -0.4 })
     const defaults = createDefaultButtonStyles()
     const rawButtons = sp.buttonStyles || {}
     form.buttonStyles = {
@@ -725,16 +757,52 @@ onMounted(async () => {
   }
 
   await nextTick()
+  updatePreviewSize()
+  clampAllElementsPosition()
+
+  // 监听预览容器尺寸变化（响应式宽度 / 模式切换），实时刷新尺寸并重新夹取坐标
+  if (previewRef.value) {
+    previewResizeObserver = new ResizeObserver(() => {
+      updatePreviewSize()
+    })
+    previewResizeObserver.observe(previewRef.value)
+  }
+})
+
+watch(previewMode, async () => {
+  await nextTick()
+  updatePreviewSize()
   clampAllElementsPosition()
 })
 
-watch(
-  () => store.currentProject?.orientation,
-  async () => {
-    await nextTick()
-    clampAllElementsPosition()
+function updatePreviewSize() {
+  if (!previewRef.value) return
+  const rect = previewRef.value.getBoundingClientRect()
+  previewSize.w = rect.width
+  previewSize.h = rect.height
+}
+
+/**
+ * 坐标迁移：检测旧绝对 px（|x| 或 |y| > 1），按 1280×720 参考分辨率换算为相对中心的百分比。
+ * 新数据（百分比，范围 -0.5~0.5）直接透传，缺失则用 fallback。
+ */
+function migratePosition(raw: any, fallback: { x: number; y: number }): { x: number; y: number } {
+  const x = Number(raw?.x)
+  const y = Number(raw?.y)
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return { ...fallback }
+  // 百分比范围 -0.5~0.5，绝对值 > 1 视为旧绝对 px
+  if (Math.abs(x) > 1 || Math.abs(y) > 1) {
+    return {
+      x: clampRatio((x - 640) / 1280),
+      y: clampRatio((y - 360) / 720),
+    }
   }
-)
+  return { x: clampRatio(x), y: clampRatio(y) }
+}
+
+function clampRatio(v: number): number {
+  return Math.min(0.5, Math.max(-0.5, v))
+}
 
 function save() {
   if (!store.currentProject) return
@@ -767,12 +835,17 @@ function save() {
   }
 }
 
+// ===== 拖拽与夹取（基于「相对中心百分比」坐标系）=====
+// dragOffset 记录按下瞬间「鼠标 → 元素百分比中心（换算成 px）」的偏移，
+// 拖拽时用鼠标位置反算新中心百分比，保证拖拽手感与坐标系解耦。
+
 function startDragMenu(event: MouseEvent) {
   if (!previewRef.value || !menuRef.value) return
   draggingMenu.value = true
   const previewRect = previewRef.value.getBoundingClientRect()
-  dragOffset.x = event.clientX - previewRect.left - form.menuPosition.x
-  dragOffset.y = event.clientY - previewRect.top - form.menuPosition.y
+  const centerPx = ratioToCenterPx(form.menuPosition, previewRect)
+  dragOffset.x = event.clientX - centerPx.x
+  dragOffset.y = event.clientY - centerPx.y
   window.addEventListener('mousemove', onDragMenu)
   window.addEventListener('mouseup', stopDragMenu)
 }
@@ -781,8 +854,9 @@ function startDragTitle(event: MouseEvent) {
   if (!previewRef.value || !titleRef.value || form.titleMode === 'none') return
   draggingTitle.value = true
   const previewRect = previewRef.value.getBoundingClientRect()
-  dragOffset.x = event.clientX - previewRect.left - form.titlePosition.x
-  dragOffset.y = event.clientY - previewRect.top - form.titlePosition.y
+  const centerPx = ratioToCenterPx(form.titlePosition, previewRect)
+  dragOffset.x = event.clientX - centerPx.x
+  dragOffset.y = event.clientY - centerPx.y
   window.addEventListener('mousemove', onDragTitle)
   window.addEventListener('mouseup', stopDragTitle)
 }
@@ -792,51 +866,73 @@ function startDragSettings(event: MouseEvent) {
   event.preventDefault()
   draggingSettings.value = true
   const previewRect = previewRef.value.getBoundingClientRect()
-  dragOffset.x = event.clientX - previewRect.left - form.settingsPosition.x
-  dragOffset.y = event.clientY - previewRect.top - form.settingsPosition.y
+  const centerPx = ratioToCenterPx(form.settingsPosition, previewRect)
+  dragOffset.x = event.clientX - centerPx.x
+  dragOffset.y = event.clientY - centerPx.y
   window.addEventListener('mousemove', onDragSettings)
   window.addEventListener('mouseup', stopDragSettings)
 }
 
+// 百分比中心 → 预览容器内的绝对像素中心位置
+function ratioToCenterPx(pos: { x: number; y: number }, rect: DOMRect) {
+  return {
+    x: rect.left + rect.width / 2 + pos.x * rect.width,
+    y: rect.top + rect.height / 2 + pos.y * rect.height,
+  }
+}
+
+// 鼠标像素位置 → 相对中心的百分比，并按元素尺寸夹取到边界内
+function clientToRatio(
+  clientX: number,
+  clientY: number,
+  rect: DOMRect,
+  elemRect: DOMRect,
+) {
+  // 元素半宽/半高占预览的比例，确保元素完整不出界
+  const halfWRatio = elemRect.width / 2 / rect.width
+  const halfHRatio = elemRect.height / 2 / rect.height
+  const x = (clientX - rect.left - rect.width / 2) / rect.width
+  const y = (clientY - rect.top - rect.height / 2) / rect.height
+  return {
+    x: clampRatioWithMargin(x, halfWRatio),
+    y: clampRatioWithMargin(y, halfHRatio),
+  }
+}
+
+function clampRatioWithMargin(v: number, margin: number): number {
+  return Math.min(0.5 - margin, Math.max(-0.5 + margin, v))
+}
+
 function onDragMenu(event: MouseEvent) {
   if (!draggingMenu.value || !previewRef.value || !menuRef.value) return
-  const previewRect = previewRef.value.getBoundingClientRect()
-  const menuRect = menuRef.value.getBoundingClientRect()
-  const maxX = Math.max(0, previewRect.width - menuRect.width)
-  const maxY = Math.max(0, previewRect.height - menuRect.height)
-  const nextX = event.clientX - previewRect.left - dragOffset.x
-  const nextY = event.clientY - previewRect.top - dragOffset.y
-  form.menuPosition.x = Math.min(Math.max(0, nextX), maxX)
-  form.menuPosition.y = Math.min(Math.max(0, nextY), maxY)
+  const rect = previewRef.value.getBoundingClientRect()
+  const elemRect = menuRef.value.getBoundingClientRect()
+  const r = clientToRatio(event.clientX - dragOffset.x, event.clientY - dragOffset.y, rect, elemRect)
+  form.menuPosition.x = r.x
+  form.menuPosition.y = r.y
 }
 
 function onDragTitle(event: MouseEvent) {
   if (!draggingTitle.value || !previewRef.value || !titleRef.value) return
-  const previewRect = previewRef.value.getBoundingClientRect()
-  const titleRect = titleRef.value.getBoundingClientRect()
-  const maxX = Math.max(0, previewRect.width - titleRect.width)
-  const maxY = Math.max(0, previewRect.height - titleRect.height)
-  const nextX = event.clientX - previewRect.left - dragOffset.x
-  const nextY = event.clientY - previewRect.top - dragOffset.y
-  form.titlePosition.x = Math.min(Math.max(0, nextX), maxX)
-  form.titlePosition.y = Math.min(Math.max(0, nextY), maxY)
+  const rect = previewRef.value.getBoundingClientRect()
+  const elemRect = titleRef.value.getBoundingClientRect()
+  const r = clientToRatio(event.clientX - dragOffset.x, event.clientY - dragOffset.y, rect, elemRect)
+  form.titlePosition.x = r.x
+  form.titlePosition.y = r.y
 }
 
 function onDragSettings(event: MouseEvent) {
   if (!draggingSettings.value || !previewRef.value || !settingsRef.value) return
-  const previewRect = previewRef.value.getBoundingClientRect()
-  const settingsRect = settingsRef.value.getBoundingClientRect()
-  const maxX = Math.max(0, previewRect.width - settingsRect.width)
-  const maxY = Math.max(0, previewRect.height - settingsRect.height)
-  const nextX = event.clientX - previewRect.left - dragOffset.x
-  const nextY = event.clientY - previewRect.top - dragOffset.y
-  form.settingsPosition.x = Math.min(Math.max(0, nextX), maxX)
-  form.settingsPosition.y = Math.min(Math.max(0, nextY), maxY)
+  const rect = previewRef.value.getBoundingClientRect()
+  const elemRect = settingsRef.value.getBoundingClientRect()
+  const r = clientToRatio(event.clientX - dragOffset.x, event.clientY - dragOffset.y, rect, elemRect)
+  form.settingsPosition.x = r.x
+  form.settingsPosition.y = r.y
 }
 
 function clampElementPosition(target: 'settings' | 'title' | 'menu') {
   if (!previewRef.value) return
-  const previewRect = previewRef.value.getBoundingClientRect()
+  const rect = previewRef.value.getBoundingClientRect()
   const elementMap = {
     settings: settingsRef.value,
     title: titleRef.value,
@@ -844,24 +940,22 @@ function clampElementPosition(target: 'settings' | 'title' | 'menu') {
   }
   const element = elementMap[target]
   if (!element) return
-  const elementRect = element.getBoundingClientRect()
-  const maxX = Math.max(0, previewRect.width - elementRect.width)
-  const maxY = Math.max(0, previewRect.height - elementRect.height)
+  const elemRect = element.getBoundingClientRect()
+  const halfWRatio = elemRect.width / 2 / rect.width
+  const halfHRatio = elemRect.height / 2 / rect.height
 
   if (target === 'settings') {
-    form.settingsPosition.x = Math.min(Math.max(0, form.settingsPosition.x), maxX)
-    form.settingsPosition.y = Math.min(Math.max(0, form.settingsPosition.y), maxY)
+    form.settingsPosition.x = clampRatioWithMargin(form.settingsPosition.x, halfWRatio)
+    form.settingsPosition.y = clampRatioWithMargin(form.settingsPosition.y, halfHRatio)
     return
   }
-
   if (target === 'title') {
-    form.titlePosition.x = Math.min(Math.max(0, form.titlePosition.x), maxX)
-    form.titlePosition.y = Math.min(Math.max(0, form.titlePosition.y), maxY)
+    form.titlePosition.x = clampRatioWithMargin(form.titlePosition.x, halfWRatio)
+    form.titlePosition.y = clampRatioWithMargin(form.titlePosition.y, halfHRatio)
     return
   }
-
-  form.menuPosition.x = Math.min(Math.max(0, form.menuPosition.x), maxX)
-  form.menuPosition.y = Math.min(Math.max(0, form.menuPosition.y), maxY)
+  form.menuPosition.x = clampRatioWithMargin(form.menuPosition.x, halfWRatio)
+  form.menuPosition.y = clampRatioWithMargin(form.menuPosition.y, halfHRatio)
 }
 
 function clampAllElementsPosition() {
@@ -903,6 +997,8 @@ onBeforeUnmount(() => {
   window.removeEventListener('mouseup', stopDragTitle)
   window.removeEventListener('mousemove', onDragSettings)
   window.removeEventListener('mouseup', stopDragSettings)
+  previewResizeObserver?.disconnect()
+  previewResizeObserver = null
 })
 
 function normalizeButtonStyle(raw: any, fallback: StartPageButtonStyle): StartPageButtonStyle {

@@ -259,6 +259,10 @@ export interface StartPage {
   titleMode: StartPageTitleMode
   titleText: string
   titleImage: string
+  // 以下三个 position 采用「相对舞台中心的偏移百分比」坐标系：
+  // x/y = 0 表示舞台正中心；x = -0.5 最左 / 0.5 最右；y = -0.5 最上 / 0.5 最下。
+  // 渲染时 left = stageW/2 + x*stageW，top = stageH/2 + y*stageH，元素锚点在自身中心。
+  // 这样在不同舞台尺寸（手机竖屏/横屏/PC）下元素相对中心的视觉位置保持一致。
   menuPosition: {
     x: number
     y: number
@@ -303,12 +307,9 @@ export interface ProjectAiConfig {
   video: ProjectVideoConfig
 }
 
-export type ProjectOrientation = 'landscape' | 'portrait'
-
 // ============== 项目类型 ==============
 export interface Project extends BaseEntity {
   name: string
-  orientation: ProjectOrientation
   path?: string // 项目本地路径
   assetServerUrl?: string // 静态资源服务地址
   cover: string
