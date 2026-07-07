@@ -25,13 +25,7 @@ export interface ImageAsset extends BaseEntity {
   height?: number
 }
 
-export interface AudioAsset extends BaseEntity {
-  name: string
-  url: string
-  duration?: number
-}
-
-export interface SubtitleAsset extends BaseEntity {
+export interface NovelAsset extends BaseEntity {
   name: string
   url: string
 }
@@ -39,8 +33,7 @@ export interface SubtitleAsset extends BaseEntity {
 export interface AssetLibrary {
   videos: VideoAsset[]
   images: ImageAsset[]
-  audios: AudioAsset[]
-  subtitles: SubtitleAsset[]
+  novels: NovelAsset[]
 }
 
 // ============== 数值类型 ==============
@@ -93,8 +86,6 @@ export interface BaseNode extends BaseEntity {
 export interface VideoNode extends BaseNode {
   type: 'video'
   videoId: string // 关联的视频素材 id
-  subtitleEnabled: boolean
-  subtitleId: string | null
   nextNodeId: string | null
   // 播片时的数值变更
   valueChanges: ValueChange[]
@@ -153,7 +144,6 @@ export type StoryNode = VideoNode | ChoiceNode | EndingNode | ClearNode | Condit
 export interface Chapter extends BaseEntity {
   name: string
   description: string
-  backgroundAudioId: string | null
   order: number
   nodes: StoryNode[]
   startNodeId: string | null
@@ -225,7 +215,6 @@ export interface StartPageButtonStyles {
 export interface StartPage {
   backgroundType: StartPageBackgroundType
   backgroundMedia: string
-  bgm: string
   titleMode: StartPageTitleMode
   titleText: string
   titleImage: string

@@ -39,7 +39,7 @@ function addUrlRef(set: Set<string>, value: unknown) {
 
 /**
  * 扫描整个项目，收集所有可能引用本地资源文件的字符串值。
- * 覆盖：素材库 url、起始页背景/BGM/标题/按钮图、节点媒体字段、
+ * 覆盖：素材库 url、起始页背景/标题/按钮图、节点媒体字段、
  * 角色头像与图集、数值图标、成就图片等。
  */
 function collectReferencedAssets(project: Project): CollectedAssets {
@@ -48,14 +48,11 @@ function collectReferencedAssets(project: Project): CollectedAssets {
   // 1) 素材库中所有资源的 url（这些是真实文件名）
   for (const video of project.assets.videos) addUrlRef(urlRefs, video.url)
   for (const image of project.assets.images) addUrlRef(urlRefs, image.url)
-  for (const audio of project.assets.audios) addUrlRef(urlRefs, audio.url)
-  for (const subtitle of project.assets.subtitles) addUrlRef(urlRefs, subtitle.url)
 
   // 2) 起始页直接 url 字段
   const sp = project.startPage
   if (sp) {
     addUrlRef(urlRefs, sp.backgroundMedia)
-    addUrlRef(urlRefs, sp.bgm)
     addUrlRef(urlRefs, sp.titleImage)
     if (sp.buttonStyles) {
       addUrlRef(urlRefs, sp.buttonStyles.start?.image)
@@ -146,8 +143,6 @@ function buildAssetPathMaps(
   const allAssets = [
     ...project.assets.videos,
     ...project.assets.images,
-    ...project.assets.audios,
-    ...project.assets.subtitles,
   ]
   for (const asset of allAssets) {
     const url = (asset.url || '').trim()
@@ -198,7 +193,6 @@ function buildRuntimeData(
       id: ch.id,
       name: ch.name,
       description: ch.description,
-      backgroundAudioId: ch.backgroundAudioId,
       order: ch.order,
       startNodeId: ch.startNodeId,
       nodes: ch.nodes.map(node => normalizeNode(node, resolve)),
@@ -219,8 +213,6 @@ function buildRuntimeData(
     startPage: normalizeStartPage(project.startPage, resolve),
     assets: {
       videos: project.assets.videos.map(v => ({ id: v.id, name: v.name, url: resolve(v.url), duration: v.duration })),
-      audios: project.assets.audios.map(a => ({ id: a.id, name: a.name, url: resolve(a.url) })),
-      subtitles: project.assets.subtitles.map(s => ({ id: s.id, name: s.name, url: resolve(s.url) })),
     },
   }
 }
@@ -231,8 +223,6 @@ function normalizeNode(node: any, resolve: (ref: unknown) => string): any {
       return {
         id: node.id, type: node.type, name: node.name,
         videoId: node.videoId,
-        subtitleEnabled: !!node.subtitleEnabled,
-        subtitleId: node.subtitleId,
         nextNodeId: node.nextNodeId,
         valueChanges: node.valueChanges || [],
       }
@@ -276,7 +266,6 @@ function normalizeStartPage(sp: any, resolve: (ref: unknown) => string): any {
   return {
     backgroundType: sp.backgroundType || 'image',
     backgroundMedia: resolve(sp.backgroundMedia),
-    bgm: resolve(sp.bgm),
     titleMode: sp.titleMode || 'text',
     titleText: sp.titleText || '',
     titleImage: resolve(sp.titleImage),
@@ -416,8 +405,6 @@ const RUNTIME_JS = [
   '',
   '  // ===== 资源解析 =====',
   '  function findVideo(id){ return (DATA.assets.videos||[]).find(function(v){return v.id===id;}); }',
-  '  function findAudio(id){ return (DATA.assets.audios||[]).find(function(a){return a.id===id;}); }',
-  '  function findSubtitle(id){ return (DATA.assets.subtitles||[]).find(function(s){return s.id===id;}); }',
   '  function findCharacter(id){ return (DATA.characters||[]).find(function(c){return c.id===id;}); }',
   '  function findChapter(id){ return (DATA.chapters||[]).find(function(c){return c.id===id;}); }',
   '  function firstChapter(){ return (DATA.chapters||[])[0] || null; }',
@@ -510,11 +497,8 @@ const RUNTIME_JS = [
   '  function loadProgress(){ try{ var raw=localStorage.getItem(SAVE_KEY); if(!raw)return false; var snap=JSON.parse(raw); state.values=snap.values||state.values; state.visitedChapters=snap.visitedChapters||{}; state.playedNodes=snap.playedNodes||{}; state.unlockedAchievements=snap.unlockedAchievements||{}; state.unlockedCollection=snap.unlockedCollection||{}; state.timeline=snap.timeline||[]; return !!snap.currentNodeId; }catch(e){ return false; } }',
   '  function hasProgress(){ try{ return !!localStorage.getItem(SAVE_KEY); }catch(e){ return false; } }',
   '',
-  '  // ===== BGM =====',
-  '  var bgmEl=null;',
   '  // 当前媒体节点的暂停/恢复句柄（用于打开时间线时冻结视频/倒计时）',
   '  var activePlayback=null;',
-  '  function playBgm(url){ if(bgmEl){ bgmEl.pause(); bgmEl=null; } if(!url)return; bgmEl=new Audio(url); bgmEl.loop=true; bgmEl.volume=0.5; bgmEl.play().catch(function(){}); }',
   '',
   '  // ===== 场景：起始页 =====',
   '  function renderStartPage(){',
@@ -548,8 +532,6 @@ const RUNTIME_JS = [
   '    stage.appendChild(menu);',
   '    // 设置按钮',
   '    var setBtn=el("button","btn"); place(setBtn, sp.settingsPosition); setBtn.textContent=btnText(bs.settings,"设置"); applyButtonStyle(setBtn,bs.settings,true); setBtn.onclick=renderSettings; stage.appendChild(setBtn);',
-  '    // BGM',
-  '    playBgm(sp.bgm);',
   '  }',
   '  function btnText(style, fallback){ if(!style||style.mode!=="image") return (style&&style.text)||fallback; return style.image?"":fallback; }',
   '',
@@ -562,7 +544,6 @@ const RUNTIME_JS = [
   '  function enterChapter(chapterId, nodeId){',
   '    var ch=findChapter(chapterId); if(!ch){ toast("章节不存在"); return; }',
   '    state.currentChapterId=chapterId; state.visitedChapters[chapterId]=true;',
-  '    var bgm=findAudio(ch.backgroundAudioId); playBgm(bgm?bgm.url:null);',
   '    var targetId = nodeId || ch.startNodeId;',
   '    if(!targetId && ch.nodes.length) targetId=ch.nodes[0].id;',
   '    renderNodeInChapter(ch, targetId);',
@@ -702,7 +683,7 @@ const RUNTIME_JS = [
   '    }',
   '  }',
   '',
-  '  function goHome(){ if(bgmEl){ bgmEl.pause(); bgmEl=null; } renderStartPage(); }',
+  '  function goHome(){ renderStartPage(); }',
   '',
   '  function escapeHtml(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;"}[c];}); }',
   '',

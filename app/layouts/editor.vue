@@ -255,7 +255,7 @@
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p class="text-sm font-medium text-gray-800">上传 txt 小说到资源库</p>
-              <p class="text-xs text-gray-500 mt-1">上传后会存入素材库字幕资源，可在此选择并解析</p>
+              <p class="text-xs text-gray-500 mt-1">上传后会存入资源库，可在此选择并解析</p>
             </div>
             <button
               class="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 transition"
@@ -317,7 +317,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ProjectLlmProvider, ProjectImageProvider, ProjectVideoProvider, SubtitleAsset } from '~/types'
+import type { ProjectLlmProvider, ProjectImageProvider, ProjectVideoProvider, NovelAsset } from '~/types'
 import { useProjectStore } from '~/stores/project'
 import { useToast } from '~/composables/useToast'
 import { useAiAppSettings } from '~/composables/useAiAppSettings'
@@ -375,7 +375,7 @@ const projectConfig = reactive({
 })
 const showTextBaseUrlInput = computed(() => projectConfig.text.provider === 'custom')
 const novelAssets = computed(() => {
-  return (store.currentProject?.assets.subtitles || []).filter(asset => isTxtNovelAsset(asset))
+  return store.currentProject?.assets.novels || []
 })
 
 const menuItems = [
@@ -436,11 +436,6 @@ function imageProviderLabel(provider: ProjectImageProvider) {
 function videoProviderLabel(provider: ProjectVideoProvider) {
   if (provider === 'seedance') return 'Seedance'
   return provider
-}
-
-function isTxtNovelAsset(asset: SubtitleAsset) {
-  const target = `${asset.name || ''} ${asset.url || ''}`.toLowerCase()
-  return target.includes('.txt')
 }
 
 function openCreativeAssistant() {
@@ -515,7 +510,7 @@ async function uploadNovelTxtToAssets() {
 
     const timestamp = now()
     const novelName = filename.replace(/\.txt$/i, '') || filename
-    store.addSubtitleAsset({
+    store.addNovelAsset({
       id: createId(),
       name: novelName,
       url: savedFilename,
@@ -524,7 +519,7 @@ async function uploadNovelTxtToAssets() {
     })
     await store.saveProject()
 
-    const addedNovel = (store.currentProject.assets.subtitles || [])
+    const addedNovel = (store.currentProject.assets.novels || [])
       .slice()
       .reverse()
       .find(asset => asset.url === savedFilename)
@@ -596,7 +591,7 @@ async function generateFromNovel() {
     const confirmMsg = [
       `将生成 ${blueprint.chapters.length} 章、共 ${totalNodes} 个节点、${blueprint.characters.length} 个角色、`,
       `${blueprint.gameValues.length} 个数值、${blueprint.achievements.length} 个成就、${blueprint.collection.length} 条图鉴。`,
-      '将覆盖当前项目的章节/角色/数值/成就/图鉴/图片素材（保留视频、音频、字幕），是否继续？',
+      '将覆盖当前项目的章节/角色/数值/成就/图鉴/图片素材（保留视频、图片），是否继续？',
     ].join('')
 
     if (hasExisting && !window.confirm(confirmMsg)) {
@@ -630,7 +625,7 @@ async function generateFromNovel() {
     // 4) 回填图片到角色头像 / 结局图 / 起始页
     const { images: finalImages, startPageBackground } = applyGeneratedImages(data, refs, generatedImages)
 
-    // 5) 覆盖写入项目（保留视频/音频/字幕素材）
+    // 5) 覆盖写入项目（保留视频/图片素材）
     const project = store.currentProject
     project.chapters = data.chapters
     project.characters = data.characters

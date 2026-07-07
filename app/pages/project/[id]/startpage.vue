@@ -50,26 +50,6 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">起始页 BGM</label>
-            <div class="flex gap-2">
-              <input
-                v-model="form.bgm"
-                type="text"
-                placeholder="选择或输入背景音乐路径"
-                class="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
-                @change="save"
-              />
-              <button
-                @click="selectBgm"
-                class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors border border-gray-200"
-              >
-                选择素材
-              </button>
-            </div>
-            <p class="mt-2 text-xs text-gray-500">支持 .mp3、.wav、.ogg</p>
-          </div>
-
-          <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">标题显示</label>
             <select
               v-model="form.titleMode"
@@ -338,8 +318,6 @@
             </div>
           </div>
         </div>
-
-        <audio v-if="displayBgm" :src="displayBgm" class="mt-4 w-full" controls></audio>
       </div>
     </div>
 
@@ -352,17 +330,6 @@
       :allow-none="true"
       none-label="清空背景资源"
       @select="handleSelectBackgroundAsset"
-    />
-
-    <CommonUiAssetPickerDialog
-      v-model="showBgmPicker"
-      title="选择背景音乐"
-      asset-type="audio"
-      :assets="store.currentProject?.assets.audios || []"
-      :selected-id="selectedBgmAssetId"
-      :allow-none="true"
-      none-label="不使用背景音乐"
-      @select="handleSelectBgmAsset"
     />
 
     <CommonUiAssetPickerDialog
@@ -391,7 +358,6 @@ const menuRef = ref<HTMLElement | null>(null)
 const titleRef = ref<HTMLElement | null>(null)
 const settingsRef = ref<HTMLElement | null>(null)
 const showBackgroundPicker = ref(false)
-const showBgmPicker = ref(false)
 const showButtonImagePicker = ref(false)
 const editingButtonKey = ref<keyof StartPageButtonStyles | null>(null)
 const draggingMenu = ref(false)
@@ -409,7 +375,6 @@ let previewResizeObserver: ResizeObserver | null = null
 const form = reactive({
   backgroundType: 'image' as 'image' | 'video',
   backgroundMedia: '',
-  bgm: '',
   titleMode: 'text' as 'text' | 'image' | 'none',
   titleText: '',
   titleImage: '',
@@ -438,7 +403,6 @@ const mainButtonStyleConfigs: { key: keyof Omit<StartPageButtonStyles, 'settings
 
 const displayBackgroundMedia = computed(() => resolveAssetUrl(form.backgroundMedia))
 const displayTitleImage = computed(() => resolveAssetUrl(form.titleImage))
-const displayBgm = computed(() => resolveAssetUrl(form.bgm))
 const backgroundPickerAssets = computed(() => {
   if (form.backgroundType === 'video') {
     return store.currentProject?.assets.videos || []
@@ -448,11 +412,6 @@ const backgroundPickerAssets = computed(() => {
 const selectedBackgroundAssetId = computed(() => {
   if (!form.backgroundMedia) return null
   const found = backgroundPickerAssets.value.find(asset => asset.url === form.backgroundMedia)
-  return found?.id || null
-})
-const selectedBgmAssetId = computed(() => {
-  if (!form.bgm) return null
-  const found = (store.currentProject?.assets.audios || []).find(asset => asset.url === form.bgm)
   return found?.id || null
 })
 const selectedButtonImageAssetId = computed(() => {
@@ -602,10 +561,6 @@ async function selectTitleImage() {
   save()
 }
 
-async function selectBgm() {
-  showBgmPicker.value = true
-}
-
 function handleSelectBackgroundAsset(id: string | null) {
   if (!id) {
     form.backgroundMedia = ''
@@ -620,22 +575,6 @@ function handleSelectBackgroundAsset(id: string | null) {
     save()
   }
   showBackgroundPicker.value = false
-}
-
-function handleSelectBgmAsset(id: string | null) {
-  if (!id) {
-    form.bgm = ''
-    showBgmPicker.value = false
-    save()
-    return
-  }
-
-  const asset = (store.currentProject?.assets.audios || []).find(item => item.id === id)
-  if (asset) {
-    form.bgm = asset.url
-    save()
-  }
-  showBgmPicker.value = false
 }
 
 function setButtonMode(key: keyof StartPageButtonStyles, mode: StartPageButtonStyle['mode']) {
@@ -737,7 +676,6 @@ onMounted(async () => {
     const sp = store.currentProject.startPage as any
     form.backgroundType = sp.backgroundType || 'image'
     form.backgroundMedia = sp.backgroundMedia || sp.backgroundImage || ''
-    form.bgm = sp.bgm || ''
     form.titleMode = sp.titleMode || 'text'
     form.titleText = sp.titleText || sp.title || store.currentProject.name
     form.titleImage = sp.titleImage || ''
@@ -809,7 +747,6 @@ function save() {
   store.currentProject.startPage = {
     backgroundType: form.backgroundType,
     backgroundMedia: form.backgroundMedia,
-    bgm: form.bgm,
     titleMode: form.titleMode,
     titleText: form.titleText,
     titleImage: form.titleImage,

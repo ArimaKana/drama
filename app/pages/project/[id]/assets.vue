@@ -11,12 +11,6 @@
         <button class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 rounded-lg shadow-sm transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0" @click="showImageDialog = true">
           <span class="text-emerald-500 text-lg leading-none">🖼</span> 添加图片
         </button>
-        <button class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 rounded-lg shadow-sm transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0" @click="showAudioDialog = true">
-          <span class="text-violet-500 text-lg leading-none">🎵</span> 添加音频
-        </button>
-        <button class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 rounded-lg shadow-sm transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0" @click="showSubtitleDialog = true">
-          <span class="text-amber-500 text-lg leading-none">💬</span> 添加字幕
-        </button>
       </div>
     </div>
 
@@ -38,22 +32,6 @@
         >
           图片素材
           <span v-if="activeTab === 'images'" class="absolute inset-0 bg-blue-50/50 rounded-t-lg -z-10"></span>
-        </button>
-        <button
-          class="px-2 py-3 text-sm font-semibold transition-all border-b-2 -mb-px relative"
-          :class="activeTab === 'audios' ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-800'"
-          @click="activeTab = 'audios'"
-        >
-          音频素材
-          <span v-if="activeTab === 'audios'" class="absolute inset-0 bg-blue-50/50 rounded-t-lg -z-10"></span>
-        </button>
-        <button
-          class="px-2 py-3 text-sm font-semibold transition-all border-b-2 -mb-px relative"
-          :class="activeTab === 'subtitles' ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-800'"
-          @click="activeTab = 'subtitles'"
-        >
-          字幕素材
-          <span v-if="activeTab === 'subtitles'" class="absolute inset-0 bg-blue-50/50 rounded-t-lg -z-10"></span>
         </button>
       </div>
 
@@ -116,54 +94,6 @@
         </div>
       </div>
 
-      <!-- 音频素材 -->
-      <div v-if="activeTab === 'audios'">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          <div v-for="audio in store.currentProject?.assets.audios || []" :key="audio.id" class="bg-white border border-gray-200/80 rounded-xl p-4 transition-all duration-300 hover:border-blue-300 hover:shadow-lg hover:-translate-y-1 relative group">
-            <div class="h-32 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 mb-4 relative overflow-hidden group-hover:bg-gray-200 transition-colors">
-              <span class="text-4xl transition-transform duration-300 group-hover:scale-110">🎵</span>
-              <div class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300"></div>
-            </div>
-            <div>
-              <h4 class="text-base text-gray-900 mb-1.5 font-bold truncate">{{ audio.name }}</h4>
-              <p class="text-xs text-gray-500 truncate mb-1" :title="audio.url">{{ audio.url || '未设置路径' }}</p>
-              <p v-if="audio.duration" class="text-xs font-medium text-gray-600 bg-gray-100 inline-block px-2 py-0.5 rounded-md">时长: {{ audio.duration }}s</p>
-            </div>
-            <div class="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <button class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-white/90 backdrop-blur rounded-lg shadow-sm transition-all text-sm" @click="editAudio(audio)" title="编辑">✎</button>
-              <button class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-white/90 backdrop-blur rounded-lg shadow-sm transition-all text-sm" title="删除" @click="requestDeleteAsset('audio', audio.id, audio.name)">🗑</button>
-            </div>
-          </div>
-          <div v-if="!store.currentProject?.assets?.audios?.length" class="col-span-full flex flex-col items-center justify-center py-20 text-gray-400 bg-white border border-gray-200 border-dashed rounded-xl">
-            <span class="text-5xl mb-4 opacity-50">🎵</span>
-            <p class="text-base">暂无音频素材，点击右上角按钮添加</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- 字幕素材 -->
-      <div v-if="activeTab === 'subtitles'">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          <div v-for="subtitle in store.currentProject?.assets.subtitles || []" :key="subtitle.id" class="bg-white border border-gray-200/80 rounded-xl p-4 transition-all duration-300 hover:border-blue-300 hover:shadow-lg hover:-translate-y-1 relative group">
-            <div class="h-32 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 mb-4 relative overflow-hidden group-hover:bg-gray-200 transition-colors">
-              <span class="text-4xl transition-transform duration-300 group-hover:scale-110">💬</span>
-              <div class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300"></div>
-            </div>
-            <div>
-              <h4 class="text-base text-gray-900 mb-1.5 font-bold truncate">{{ subtitle.name }}</h4>
-              <p class="text-xs text-gray-500 truncate mb-1" :title="subtitle.url">{{ subtitle.url || '未设置路径' }}</p>
-            </div>
-            <div class="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <button class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-white/90 backdrop-blur rounded-lg shadow-sm transition-all text-sm" @click="editSubtitle(subtitle)" title="编辑">✎</button>
-              <button class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-white/90 backdrop-blur rounded-lg shadow-sm transition-all text-sm" title="删除" @click="requestDeleteAsset('subtitle', subtitle.id, subtitle.name)">🗑</button>
-            </div>
-          </div>
-          <div v-if="!store.currentProject?.assets?.subtitles?.length" class="col-span-full flex flex-col items-center justify-center py-20 text-gray-400 bg-white border border-gray-200 border-dashed rounded-xl">
-            <span class="text-5xl mb-4 opacity-50">💬</span>
-            <p class="text-base">暂无字幕素材，点击右上角按钮添加</p>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- 添加视频对话框 -->
@@ -357,50 +287,6 @@
       </template>
     </CommonUiDialog>
 
-    <CommonUiDialog v-model="showAudioDialog" :title="isEditingAudio ? '编辑音频' : '添加音频'" width="450px">
-      <div class="space-y-5">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">音频名称</label>
-          <input v-model="audioForm.name" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm" placeholder="请输入音频名称" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">音频文件</label>
-          <div class="flex gap-2">
-            <input v-model="audioForm.url" class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 text-gray-500" placeholder="请选择音频文件" readonly />
-            <button type="button" class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50" @click="selectAudioFile">选择</button>
-          </div>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">时长(秒)</label>
-          <input v-model.number="audioForm.duration" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-        </div>
-      </div>
-      <template #footer>
-        <button class="px-4 py-1.5 text-sm border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 transition" @click="showAudioDialog = false">取消</button>
-        <button class="px-4 py-1.5 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition" @click="saveAudio">确定</button>
-      </template>
-    </CommonUiDialog>
-
-    <CommonUiDialog v-model="showSubtitleDialog" :title="isEditingSubtitle ? '编辑字幕' : '添加字幕'" width="450px">
-      <div class="space-y-5">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">字幕名称</label>
-          <input v-model="subtitleForm.name" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm" placeholder="请输入字幕名称" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">字幕文件</label>
-          <div class="flex gap-2">
-            <input v-model="subtitleForm.url" class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 text-gray-500" placeholder="请选择字幕文件" readonly />
-            <button type="button" class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50" @click="selectSubtitleFile">选择</button>
-          </div>
-        </div>
-      </div>
-      <template #footer>
-        <button class="px-4 py-1.5 text-sm border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 transition" @click="showSubtitleDialog = false">取消</button>
-        <button class="px-4 py-1.5 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition" @click="saveSubtitle">确定</button>
-      </template>
-    </CommonUiDialog>
-
     <CommonDangerConfirmDialog
       v-model="showDeleteDialog"
       :title="`删除${assetTypeLabel(pendingDeleteType)}`"
@@ -446,7 +332,7 @@
 </template>
 
 <script setup lang="ts">
-import type { VideoAsset, ImageAsset, AudioAsset, SubtitleAsset, ImageCategory, ProjectAiTokenProvider } from '~/types'
+import type { VideoAsset, ImageAsset, ImageCategory, ProjectAiTokenProvider } from '~/types'
 import { useProjectStore } from '~/stores/project'
 import { useToast } from '~/composables/useToast'
 import { useAiAppSettings } from '~/composables/useAiAppSettings'
@@ -477,8 +363,6 @@ const imageFilterOptions = [
 
 const showVideoDialog = ref(false)
 const showImageDialog = ref(false)
-const showAudioDialog = ref(false)
-const showSubtitleDialog = ref(false)
 const showDeleteDialog = ref(false)
 const showImagePreviewDialog = ref(false)
 const showVideoPreviewDialog = ref(false)
@@ -486,13 +370,9 @@ const videoDialogTab = ref<'manual' | 'ai'>('manual')
 const imageDialogTab = ref<'manual' | 'ai'>('manual')
 const isEditingVideo = ref(false)
 const isEditingImage = ref(false)
-const isEditingAudio = ref(false)
-const isEditingSubtitle = ref(false)
 const editingVideoId = ref<string | null>(null)
 const editingImageId = ref<string | null>(null)
-const editingAudioId = ref<string | null>(null)
-const editingSubtitleId = ref<string | null>(null)
-const pendingDeleteType = ref<'video' | 'image' | 'audio' | 'subtitle'>('video')
+const pendingDeleteType = ref<'video' | 'image'>('video')
 const pendingDeleteId = ref<string | null>(null)
 const pendingDeleteName = ref('')
 const previewImageUrl = ref('')
@@ -502,8 +382,6 @@ const previewVideoName = ref('')
 
 const videoForm = reactive({ name: '', url: '', duration: 0 })
 const imageForm = reactive({ name: '', url: '', category: 'character' as ImageCategory })
-const audioForm = reactive({ name: '', url: '', duration: 0 })
-const subtitleForm = reactive({ name: '', url: '' })
 const videoAiPrompt = ref('')
 const isGeneratingVideoByAi = ref(false)
 const useFirstFrameImageByAi = ref(false)
@@ -1029,74 +907,6 @@ async function selectReferenceImageFile() {
   }
 }
 
-async function selectAudioFile() {
-  if (isTauriRuntime()) {
-    try {
-      const { open } = await import('@tauri-apps/plugin-dialog')
-      const selected = await open({
-        multiple: false,
-        filters: [{ name: 'Audio', extensions: ['mp3', 'wav', 'ogg', 'm4a', 'flac'] }]
-      })
-      if (selected) {
-        const sourcePath = selected as string
-        const filename = sourcePath.split(/[/\\]/).pop() || `audio_${Date.now()}.mp3`
-        const { invoke } = await import('@tauri-apps/api/core')
-        try {
-          const savedFilename = await invoke<string>('copy_asset', {
-            projectPath: store.currentProject?.path,
-            sourcePath,
-            filename
-          })
-          audioForm.url = savedFilename
-          if (!audioForm.name) {
-            audioForm.name = filename.split('.')[0] || filename
-          }
-        } catch (e: any) {
-          toast.error('复制文件失败: ' + e.message)
-        }
-      }
-    } catch (e: any) {
-      toast.error(e?.message || '文件选择失败，请检查 Tauri 插件配置')
-    }
-  } else {
-    toast.error('浏览器环境不支持选择本地文件')
-  }
-}
-
-async function selectSubtitleFile() {
-  if (isTauriRuntime()) {
-    try {
-      const { open } = await import('@tauri-apps/plugin-dialog')
-      const selected = await open({
-        multiple: false,
-        filters: [{ name: 'Subtitle', extensions: ['srt', 'vtt', 'ass', 'ssa'] }]
-      })
-      if (selected) {
-        const sourcePath = selected as string
-        const filename = sourcePath.split(/[/\\]/).pop() || `subtitle_${Date.now()}.srt`
-        const { invoke } = await import('@tauri-apps/api/core')
-        try {
-          const savedFilename = await invoke<string>('copy_asset', {
-            projectPath: store.currentProject?.path,
-            sourcePath,
-            filename
-          })
-          subtitleForm.url = savedFilename
-          if (!subtitleForm.name) {
-            subtitleForm.name = filename.split('.')[0] || filename
-          }
-        } catch (e: any) {
-          toast.error('复制文件失败: ' + e.message)
-        }
-      }
-    } catch (e: any) {
-      toast.error(e?.message || '文件选择失败，请检查 Tauri 插件配置')
-    }
-  } else {
-    toast.error('浏览器环境不支持选择本地文件')
-  }
-}
-
 onMounted(async () => {
   const projectId = route.params.id as string
   if (!store.currentProject || store.currentProject.id !== projectId) {
@@ -1130,12 +940,10 @@ function categoryLabel(cat: ImageCategory) {
   return labels[cat] || cat
 }
 
-function assetTypeLabel(type: 'video' | 'image' | 'audio' | 'subtitle') {
+function assetTypeLabel(type: 'video' | 'image') {
   const labels = {
     video: '视频',
     image: '图片',
-    audio: '音频',
-    subtitle: '字幕',
   }
   return labels[type]
 }
@@ -1211,24 +1019,7 @@ function previewVideo(video: VideoAsset) {
   showVideoPreviewDialog.value = true
 }
 
-function editAudio(audio: AudioAsset) {
-  isEditingAudio.value = true
-  editingAudioId.value = audio.id
-  audioForm.name = audio.name
-  audioForm.url = audio.url
-  audioForm.duration = audio.duration || 0
-  showAudioDialog.value = true
-}
-
-function editSubtitle(subtitle: SubtitleAsset) {
-  isEditingSubtitle.value = true
-  editingSubtitleId.value = subtitle.id
-  subtitleForm.name = subtitle.name
-  subtitleForm.url = subtitle.url
-  showSubtitleDialog.value = true
-}
-
-function requestDeleteAsset(type: 'video' | 'image' | 'audio' | 'subtitle', id: string, name: string) {
+function requestDeleteAsset(type: 'video' | 'image', id: string, name: string) {
   pendingDeleteType.value = type
   pendingDeleteId.value = id
   pendingDeleteName.value = name
@@ -1255,12 +1046,6 @@ function confirmDeleteAsset() {
   } else if (pendingDeleteType.value === 'image') {
     store.removeImageAsset(pendingDeleteId.value)
     toast.success('图片已删除')
-  } else if (pendingDeleteType.value === 'audio') {
-    store.removeAudioAsset(pendingDeleteId.value)
-    toast.success('音频已删除')
-  } else {
-    store.removeSubtitleAsset(pendingDeleteId.value)
-    toast.success('字幕已删除')
   }
   cancelDeleteAsset()
 }
@@ -1294,63 +1079,6 @@ async function saveImage() {
   }
 }
 
-async function saveAudio() {
-  if (!audioForm.name.trim()) {
-    toast.warning('请输入音频名称')
-    return
-  }
-  if (isEditingAudio.value && editingAudioId.value) {
-    const audios = store.currentProject?.assets.audios || []
-    const a = audios.find(a => a.id === editingAudioId.value)
-    if (a) Object.assign(a, { ...audioForm, updatedAt: now() })
-  } else {
-    const timestamp = now()
-    store.addAudioAsset({
-      id: createId(),
-      name: audioForm.name,
-      url: audioForm.url,
-      duration: audioForm.duration,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    })
-  }
-  try {
-    await store.saveProject()
-    showAudioDialog.value = false
-    resetAudioForm()
-  } catch (error: any) {
-    toast.error(error?.message || '自动保存失败')
-  }
-}
-
-async function saveSubtitle() {
-  if (!subtitleForm.name.trim()) {
-    toast.warning('请输入字幕名称')
-    return
-  }
-  if (isEditingSubtitle.value && editingSubtitleId.value) {
-    const subtitles = store.currentProject?.assets.subtitles || []
-    const s = subtitles.find(s => s.id === editingSubtitleId.value)
-    if (s) Object.assign(s, { ...subtitleForm, updatedAt: now() })
-  } else {
-    const timestamp = now()
-    store.addSubtitleAsset({
-      id: createId(),
-      name: subtitleForm.name,
-      url: subtitleForm.url,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    })
-  }
-  try {
-    await store.saveProject()
-    showSubtitleDialog.value = false
-    resetSubtitleForm()
-  } catch (error: any) {
-    toast.error(error?.message || '自动保存失败')
-  }
-}
-
 function resetVideoForm() {
   isEditingVideo.value = false
   editingVideoId.value = null
@@ -1376,20 +1104,5 @@ function resetImageForm() {
   selectedReferenceImageId.value = null
   referenceImageUrl.value = ''
   imageDialogTab.value = 'manual'
-}
-
-function resetAudioForm() {
-  isEditingAudio.value = false
-  editingAudioId.value = null
-  audioForm.name = ''
-  audioForm.url = ''
-  audioForm.duration = 0
-}
-
-function resetSubtitleForm() {
-  isEditingSubtitle.value = false
-  editingSubtitleId.value = null
-  subtitleForm.name = ''
-  subtitleForm.url = ''
 }
 </script>

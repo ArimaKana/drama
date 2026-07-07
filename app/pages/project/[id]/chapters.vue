@@ -120,33 +120,12 @@
             generated-success-message="已生成章节简介"
           />
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">背景音乐</label>
-          <button
-            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white hover:border-blue-300 transition-colors"
-            @click="showAudioPicker = true"
-          >
-            {{ selectedBackgroundAudio?.name || '不使用背景音乐' }}
-          </button>
-          <p v-if="selectedBackgroundAudio" class="mt-1 text-xs text-gray-500 truncate">{{ selectedBackgroundAudio.url }}</p>
-        </div>
       </div>
       <template #footer>
         <button class="px-4 py-1.5 text-sm border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 transition" @click="showChapterDialog = false">取消</button>
         <button class="px-4 py-1.5 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition" @click="saveChapter">确定</button>
       </template>
     </CommonUiDialog>
-
-    <CommonUiAssetPickerDialog
-      v-model="showAudioPicker"
-      title="选择背景音乐"
-      asset-type="audio"
-      :assets="store.currentProject?.assets.audios || []"
-      :selected-id="chapterForm.backgroundAudioId"
-      :allow-none="true"
-      none-label="不使用背景音乐"
-      @select="handleSelectBackgroundAudio"
-    />
 
     <CommonDangerConfirmDialog
       v-model="showDeleteChapterDialog"
@@ -205,16 +184,11 @@ watch(() => store.selectedNode, (node) => {
 })
 
 const showChapterDialog = ref(false)
-const showAudioPicker = ref(false)
 const showDeleteChapterDialog = ref(false)
 const pendingDeleteChapterId = ref<string | null>(null)
 const isEditingChapter = ref(false)
 const editingChapterId = ref<string | null>(null)
-const chapterForm = reactive({ name: '', description: '', backgroundAudioId: null as string | null })
-
-const selectedBackgroundAudio = computed(() => {
-  return (store.currentProject?.assets.audios || []).find(a => a.id === chapterForm.backgroundAudioId)
-})
+const chapterForm = reactive({ name: '', description: '' })
 
 // 确保项目已加载
 onMounted(async () => {
@@ -234,7 +208,6 @@ function handleAddChapter() {
   editingChapterId.value = null
   chapterForm.name = ''
   chapterForm.description = ''
-  chapterForm.backgroundAudioId = null
   showChapterDialog.value = true
 }
 
@@ -243,13 +216,7 @@ function editChapter(chapter: Chapter) {
   editingChapterId.value = chapter.id
   chapterForm.name = chapter.name
   chapterForm.description = chapter.description
-  chapterForm.backgroundAudioId = chapter.backgroundAudioId ?? null
   showChapterDialog.value = true
-}
-
-function handleSelectBackgroundAudio(id: string | null) {
-  chapterForm.backgroundAudioId = id
-  showAudioPicker.value = false
 }
 
 function openDeleteChapterDialog(chapterId: string) {
@@ -268,7 +235,7 @@ const chapterDescriptionPrompt = computed(() => {
   if (!chapterForm.name.trim()) {
     return ''
   }
-  return `请为章节“${chapterForm.name}”生成一段章节简介，80-140字，突出剧情氛围与核心目标。背景音乐：${selectedBackgroundAudio.value?.name || '无'}`
+  return `请为章节“${chapterForm.name}”生成一段章节简介，80-140字，突出剧情氛围与核心目标。`
 })
 
 async function saveChapter() {
@@ -280,14 +247,12 @@ async function saveChapter() {
     store.updateChapter(editingChapterId.value, {
       name: chapterForm.name,
       description: chapterForm.description,
-      backgroundAudioId: chapterForm.backgroundAudioId,
     })
   } else {
     const chapter = store.addChapter(chapterForm.name)
     if (chapter) {
       store.updateChapter(chapter.id, {
         description: chapterForm.description,
-        backgroundAudioId: chapterForm.backgroundAudioId,
       })
     }
   }

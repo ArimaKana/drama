@@ -30,24 +30,6 @@
           <p v-if="selectedVideo" class="mt-1 text-xs text-gray-500 truncate">{{ selectedVideo.url }}</p>
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1.5">字幕切换</label>
-          <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" v-model="nodeData.subtitleEnabled" class="sr-only peer" @change="updateField('subtitleEnabled', nodeData.subtitleEnabled)" />
-            <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500"></div>
-            <span class="ml-2 text-xs text-gray-600">{{ nodeData.subtitleEnabled ? '已开启' : '已关闭' }}</span>
-          </label>
-        </div>
-        <div v-if="nodeData.subtitleEnabled">
-          <label class="block text-xs font-medium text-gray-500 mb-1.5">字幕文件</label>
-          <button
-            class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg text-left hover:border-blue-300 hover:bg-gray-50 transition-all"
-            @click="showSubtitlePicker = true"
-          >
-            {{ selectedSubtitle?.name || '不使用字幕文件' }}
-          </button>
-          <p v-if="selectedSubtitle" class="mt-1 text-xs text-gray-500 truncate">{{ selectedSubtitle.url }}</p>
-        </div>
-        <div>
           <label class="block text-xs font-medium text-gray-500 mb-1.5">下一节点</label>
           <select v-model="nodeData.nextNodeId" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white transition-all shadow-sm" @change="updateField('nextNodeId', nodeData.nextNodeId)">
             <option value="">选择节点</option>
@@ -184,17 +166,6 @@
     @select="handleSelectVideo"
   />
 
-  <CommonUiAssetPickerDialog
-    v-model="showSubtitlePicker"
-    title="选择字幕素材"
-    asset-type="subtitle"
-    :assets="store.currentProject?.assets.subtitles || []"
-    :selected-id="nodeData.subtitleId"
-    :allow-none="true"
-    none-label="不使用字幕文件"
-    @select="handleSelectSubtitle"
-  />
-
   <CommonDangerConfirmDialog
     v-model="showDeleteNodeDialog"
     title="确认删除节点"
@@ -212,7 +183,6 @@ import { useToast } from '~/composables/useToast'
 const store = useProjectStore()
 const toast = useToast()
 const showVideoPicker = ref(false)
-const showSubtitlePicker = ref(false)
 const showDeleteNodeDialog = ref(false)
 
 const operators: ConditionOperator[] = ['>', '<', '>=', '<=', '==', '!=']
@@ -239,10 +209,6 @@ const selectedVideo = computed(() => {
   return (store.currentProject?.assets.videos || []).find(v => v.id === nodeData.value.videoId)
 })
 
-const selectedSubtitle = computed(() => {
-  return (store.currentProject?.assets.subtitles || []).find(s => s.id === nodeData.value.subtitleId)
-})
-
 function updateField(field: string, value: any) {
   if (!store.selectedNodeId) return
   store.updateNode(store.selectedNodeId, { [field]: value } as any)
@@ -253,12 +219,6 @@ function handleSelectVideo(id: string | null) {
   nodeData.value.videoId = id
   updateField('videoId', id)
   showVideoPicker.value = false
-}
-
-function handleSelectSubtitle(id: string | null) {
-  nodeData.value.subtitleId = id
-  updateField('subtitleId', id)
-  showSubtitlePicker.value = false
 }
 
 function updateOptions() {

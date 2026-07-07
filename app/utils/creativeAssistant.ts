@@ -481,8 +481,6 @@ function buildChapterNodes(
         realNodes.push({
           ...base,
           videoId: '',
-          subtitleEnabled: false,
-          subtitleId: null,
           nextNodeId: bn.nextRef ?? null, // 暂存 ref，第二遍映射
           valueChanges: mapValueEffects(bn.valueEffects, refs),
         } as VideoNode)
@@ -585,7 +583,6 @@ export function buildChaptersFromBlueprint(blueprint: StoryBlueprint, refs: RefM
       id: chapterId,
       name: bpChapter.name,
       description: bpChapter.summary,
-      backgroundAudioId: null,
       order: index,
       nodes,
       startNodeId,

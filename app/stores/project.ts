@@ -11,8 +11,7 @@ import type {
   CollectionEntry,
   VideoAsset,
   ImageAsset,
-  AudioAsset,
-  SubtitleAsset,
+  NovelAsset,
 } from '~/types'
 import {
   createProject,
@@ -82,26 +81,15 @@ export const useProjectStore = defineStore('project', () => {
     project.assets = {
       videos: project.assets?.videos || [],
       images: project.assets?.images || [],
-      audios: project.assets?.audios || [],
-      subtitles: project.assets?.subtitles || [],
+      novels: project.assets?.novels || [],
     }
   }
 
   function ensureChapterAndNodeFields(project: Project) {
     project.chapters = (project.chapters || []).map(chapter => {
-      const nodes = (chapter.nodes || []).map(node => {
-        if (node.type === 'video') {
-          return {
-            ...node,
-            subtitleEnabled: node.subtitleEnabled ?? false,
-            subtitleId: node.subtitleId ?? null,
-          }
-        }
-        return node
-      })
+      const nodes = (chapter.nodes || []).map(node => node)
       return {
         ...chapter,
-        backgroundAudioId: chapter.backgroundAudioId ?? null,
         nodes,
       }
     })
@@ -465,24 +453,14 @@ export const useProjectStore = defineStore('project', () => {
     currentProject.value.assets.images = currentProject.value.assets.images.filter(i => i.id !== id)
   }
 
-  function addAudioAsset(audio: AudioAsset) {
+  function addNovelAsset(novel: NovelAsset) {
     if (!currentProject.value) return
-    currentProject.value.assets.audios.push(audio)
+    currentProject.value.assets.novels.push(novel)
   }
 
-  function removeAudioAsset(id: string) {
+  function removeNovelAsset(id: string) {
     if (!currentProject.value) return
-    currentProject.value.assets.audios = currentProject.value.assets.audios.filter(a => a.id !== id)
-  }
-
-  function addSubtitleAsset(subtitle: SubtitleAsset) {
-    if (!currentProject.value) return
-    currentProject.value.assets.subtitles.push(subtitle)
-  }
-
-  function removeSubtitleAsset(id: string) {
-    if (!currentProject.value) return
-    currentProject.value.assets.subtitles = currentProject.value.assets.subtitles.filter(s => s.id !== id)
+    currentProject.value.assets.novels = currentProject.value.assets.novels.filter(n => n.id !== id)
   }
 
   // ============ 成就操作 ============
@@ -567,10 +545,8 @@ export const useProjectStore = defineStore('project', () => {
     removeVideoAsset,
     addImageAsset,
     removeImageAsset,
-    addAudioAsset,
-    removeAudioAsset,
-    addSubtitleAsset,
-    removeSubtitleAsset,
+    addNovelAsset,
+    removeNovelAsset,
     // 成就
     addAchievement,
     updateAchievement,

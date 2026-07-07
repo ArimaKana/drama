@@ -40,12 +40,12 @@ const project = {
   cover: '',
   createdAt: ts,
   updatedAt: ts,
-  assets: { videos: [], images: [], audios: [], subtitles: [] },
+  assets: { videos: [], images: [], novels: [] },
   gameValues: [{ id: 'v1', name: '好感度', icon: '', defaultValue: 0, minValue: 0, maxValue: 100, createdAt: ts, updatedAt: ts }],
   characters: [{ id: 'c1', name: '主角', gender: 'other', avatar: '', description: '测试角色', images: [], createdAt: ts, updatedAt: ts }],
   chapters: [
     {
-      id: 'ch1', name: '第一章', description: '测试', backgroundAudioId: null, order: 0, startNodeId: 'n1',
+      id: 'ch1', name: '第一章', description: '测试', order: 0, startNodeId: 'n1',
       createdAt: ts, updatedAt: ts,
       nodes: [
         mkNode({ id: 'n1', type: 'choice', prompt: '向左还是向右？', hasCountdown: false, countdownSeconds: 10, defaultOptionId: null,
@@ -61,7 +61,7 @@ const project = {
   achievements: [{ id: 'a1', name: '初次抉择', description: '完成第一次选择', image: '', conditions: [{ type: 'node_played', nodeId: 'n1' }], createdAt: ts, updatedAt: ts }],
   collection: [{ id: 'col1', characterId: 'c1', description: '角色档案', unlockConditions: [{ type: 'chapter_unlock', chapterId: 'ch1' }], createdAt: ts, updatedAt: ts }],
   startPage: {
-    backgroundType: 'image', backgroundMedia: '', bgm: '', titleMode: 'text', titleText: '测试互动剧', titleImage: '',
+    backgroundType: 'image', backgroundMedia: '', titleMode: 'text', titleText: '测试互动剧', titleImage: '',
     menuPosition: { x: 24, y: 220 }, titlePosition: { x: 180, y: 48 }, settingsPosition: { x: 560, y: 16 },
     buttonStyles: {
       start: { mode: 'normal', text: '开始游戏', textColor: '#fff', backgroundColor: '#2563eb', image: '' },

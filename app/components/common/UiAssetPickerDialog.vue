@@ -69,7 +69,7 @@
 const props = defineProps<{
   modelValue: boolean
   title: string
-  assetType: 'video' | 'image' | 'audio' | 'subtitle'
+  assetType: 'video' | 'image' | 'novel'
   assets: Array<{ id: string; name: string; url: string; category?: string }>
   selectedId?: string | null
   allowNone?: boolean
@@ -101,8 +101,7 @@ const filteredAssets = computed(() => {
 
 const assetEmoji = computed(() => {
   if (props.assetType === 'video') return '🎬'
-  if (props.assetType === 'audio') return '🎵'
-  if (props.assetType === 'subtitle') return '💬'
+  if (props.assetType === 'novel') return '📖'
   return '🖼'
 })
 
@@ -111,8 +110,7 @@ const goToAssets = () => {
   const tabMap: Record<string, string> = {
     video: 'videos',
     image: 'images',
-    audio: 'audios',
-    subtitle: 'subtitles'
+    novel: 'images'
   }
   const tab = tabMap[props.assetType] || 'images'
   const projectId = store.currentProject?.id

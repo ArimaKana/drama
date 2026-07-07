@@ -265,13 +265,7 @@ fn guess_mime(filename: &str) -> &'static str {
         "image/svg+xml"
     } else if lower.ends_with(".bmp") {
         "image/bmp"
-    } else if lower.ends_with(".mp3") {
-        "audio/mpeg"
-    } else if lower.ends_with(".wav") {
-        "audio/wav"
-    } else if lower.ends_with(".ogg") {
-        "audio/ogg"
-    } else if lower.ends_with(".srt") || lower.ends_with(".txt") {
+    } else if lower.ends_with(".txt") {
         "text/plain"
     } else if lower.ends_with(".json") {
         "application/json"
